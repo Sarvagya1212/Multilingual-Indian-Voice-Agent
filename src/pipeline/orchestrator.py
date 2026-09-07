@@ -2,12 +2,12 @@
 import uuid
 import time
 from datetime import datetime
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 from src.stt import get_stt_provider, STTResult
 from src.tts import get_tts_provider, TTSResult
 from src.llm import get_llm_provider, Message, MessageRole, LLMResponse
-from src.llm.config import load_prompt, build_system_prompt
+from src.llm.config import load_prompt
 from src.pipeline.types import (
     AgentState,
     Session,
@@ -15,6 +15,12 @@ from src.pipeline.types import (
     PipelineMetrics,
 )
 from src.logger import setup_logger
+
+# Telemetry is optional — never crash the pipeline if it's missing.
+try:
+    from src.telemetry import write_turn_event
+except Exception:
+    write_turn_event = None  # type: ignore[assignment, misc]
 
 logger = setup_logger(__name__)
 
@@ -130,12 +136,14 @@ class ConversationOrchestrator:
 
             # Step 2: LLM - Generate response
             llm_start = time.time()
-            response: LLMResponse = await self._generate_response(
+            response: LLMResponse
+            tool_names: List[str]
+            response, tool_names = await self._generate_response(
                 stt_result.text,
                 stt_result.language,
             )
             metrics.llm_latency_ms = (time.time() - llm_start) * 1000
-            metrics.tool_calls = len(response.tool_calls)
+            metrics.tool_calls = len(tool_names)
 
             logger.info(
                 f"LLM ({metrics.llm_latency_ms:.0f}ms): "
@@ -182,6 +190,24 @@ class ConversationOrchestrator:
             # Log metrics
             logger.info(f"Turn complete: {metrics.total_latency_ms:.0f}ms total")
 
+            # Live telemetry — append a turn event to logs/events.jsonl when enabled.
+            # No-op when telemetry is disabled or the writer is unavailable.
+            if write_turn_event is not None:
+                try:
+                    write_turn_event(
+                        session_id=self.current_session.id,
+                        language=stt_result.language,
+                        transcript=stt_result.text,
+                        response=response.content,
+                        stt_latency_ms=metrics.stt_latency_ms,
+                        llm_latency_ms=metrics.llm_latency_ms,
+                        tts_latency_ms=metrics.tts_latency_ms,
+                        total_latency_ms=metrics.total_latency_ms,
+                        tools_used=tool_names,
+                    )
+                except Exception as telemetry_err:
+                    logger.warning(f"Telemetry write failed: {telemetry_err}")
+
             return tts_result
 
         except Exception as e:
@@ -195,7 +221,7 @@ class ConversationOrchestrator:
         self,
         user_text: str,
         language: str,
-    ) -> LLMResponse:
+    ) -> tuple[LLMResponse, List[str]]:
         """Generate response using LLM with tool support.
 
         Args:
@@ -233,7 +259,8 @@ class ConversationOrchestrator:
             max_tokens=512,
         )
 
-        return response
+        tool_names = [tc.name for tc in response.tool_calls]
+        return response, tool_names
 
     def _build_system_prompt(self, language: str) -> str:
         """Build combined system prompt.
