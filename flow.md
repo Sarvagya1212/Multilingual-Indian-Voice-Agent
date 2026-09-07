@@ -732,4 +732,56 @@ class ConversationOrchestrator:
 
 ---
 
+### Prompt 2.1 - Voice Gateway with WebSocket (2026-09-07)
+
+**Actions Taken:**
+1. Created `src/gateway/audio_utils.py` with audio conversion utilities
+2. Created `src/gateway/vad.py` with energy-based voice activity detection
+3. Created `src/gateway/websocket_server.py` with `VoiceGateway` WebSocket server
+4. Created `src/gateway/__init__.py` exporting gateway public API
+5. Created `tests/test_gateway.py` with 33 audio_utils + VAD tests
+6. Created `tests/test_websocket_server.py` with 10 WebSocket server + GatewaySession tests
+7. All 43 gateway tests pass (133/133 total)
+
+**Architecture Decisions:**
+- **WebSocket server**: Real-time bidirectional audio + JSON control over `websockets>=14`
+- **VAD with hysteresis**: Two thresholds (onset=0.02, offset=0.010) prevent flapping at speech boundaries
+- **Audio utilities**: WAV-aware decoding (handles int8/int16/int24/int32), resampling via linear interpolation, mix/chunk utilities
+- **Session abstraction**: `GatewaySession` owns buffer + VAD + state per connection
+- **Message protocol**: JSON for control (`ping`, `start`, `stop`, `interrupt`, `status`); binary frames for audio in/out
+- **Streaming or VAD modes**: Client can either buffer audio and send `start`/`stop`, or let VAD detect utterances
+- **Pipeline integration**: `VoiceGateway(pipeline=orchestrator)` plugs in ConversationOrchestrator for turn processing
+
+**Key Modules:**
+
+`src/gateway/audio_utils.py`:
+- `bytes_to_audio(audio_bytes, sample_rate)` — WAV/PCM int16 → float32
+- `audio_to_bytes(audio_np, sample_rate, as_wav)` — float32 → WAV/PCM
+- `create_wav_header(num_frames, ...)` — 44-byte RIFF header
+- `resample_audio(audio, orig_sr, target_sr)` — linear interpolation
+- `mix_audio(chunks)` — sum + normalise
+- `compute_rms(audio)` — RMS energy
+- `trim_silence(audio, ...)` — leading/trailing silence removal
+
+`src/gateway/vad.py`:
+- `VADConfig` dataclass (sample_rate, frame_duration_ms, energy_threshold, etc.)
+- `SimpleEnergyVAD` class with `is_speech`, `is_speech_with_hysteresis`, `detect_speech_segments`, `reset`
+
+`src/gateway/websocket_server.py`:
+- `GatewaySession` — per-connection state
+- `VoiceGateway` — server with `handle_websocket`, `_handle_audio`, `_handle_json`, `_process_turn`
+- Message protocol: start/stop, ping/pong, interrupt, status, speech_start, speech_end, turn_started, turn_complete, error
+- `start_in_thread()` — for testing (returns Server)
+- `start()` — for production (runs forever)
+
+**Test Results:**
+```
+43 passed in 0.40s (gateway)
+133 passed in 6.58s (all tests)
+```
+
+**Status:** ✅ Complete (43/43 gateway tests pass, 133/133 total)
+
+---
+
 Last updated: 2026-09-07
