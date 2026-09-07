@@ -1102,4 +1102,36 @@ experiments/<NNN_name>/
 
 ---
 
+## 26. Research Documentation (Prompt 9.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Files
+- `docs/research/README.md` — index, key takeaways, research process
+- `docs/research/001_speech_recognition_indian_languages.md` — IndicWhisper, language hints
+- `docs/research/002_streaming_stt.md` — VAD-first streaming, partial results, cascade
+- `docs/research/003_voice_agent_architecture.md` — state machine + tool registry + two-pass
+- `docs/research/004_rag_for_domain_qa.md` — chunk size, re-ranking, groundedness
+- `docs/research/005_code_switching.md` — multi-signal detection, transliteration, LLM fallback
+- `tests/test_research_docs.py` — 67 tests
+
+### Decisions
+- **5 research docs** (not 3 as the prompt specified) — added RAG and code-switching since both were heavily researched during implementation.
+- **Inspiration vs citation distinction**: papers shaped thinking; we did not reproduce their experiments. Numbers cited from papers are clearly attributed.
+- **Consistent 8-section template**: every doc has Paper/Source, Problem, Key Approach, Relevant Ideas, What We Implemented, What We Did NOT Implement, Results, Inspiration Statement.
+- **Test enforces checkboxes are ticked**: `test_all_implemented_checkboxes_are_ticked` ensures "What We Implemented" has only `[x]` — nothing deferred lives there.
+- **Placeholder arXiv links**: test rejects unassigned arXiv placeholders; real links go in before publishing.
+- **Each doc references actual project files**: tests verify `src/`, `experiments/`, `evaluations/`, etc. are cited so docs don't go stale.
+
+### Test Results
+```
+67 passed in 0.12s (research docs)
+433 passed in 7.31s (all tests)
+```
+
+**Status:** ✅ Complete (67/67 research doc tests pass, 433/433 total)
+
+---
+
 Last updated: 2026-09-07
