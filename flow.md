@@ -921,4 +921,39 @@ query → embed_query → cosine search → Reranker → top-k → context strin
 
 ---
 
+## 22. Evaluation Framework (Prompt 5.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Files
+- `evaluations/stt/metrics.py` — WER/CER/Levenshtein (no external dep), STTEvaluator
+- `evaluations/stt/evaluator.py` — STTEvaluatorRunner, STTTestCase dataclass
+- `evaluations/tts/metrics.py` — TTSEvaluator (acronym counting, RTF, groundedness)
+- `evaluations/tts/evaluator.py` — TTSEvaluatorRunner, TTSTestCase
+- `evaluations/rag/metrics.py` — RAGEvaluator (recall, relevance, hallucination/groundedness)
+- `evaluations/rag/evaluator.py` — RAGEvaluatorRunner, RAGTestCase
+- `evaluations/agent/metrics.py` — AgentEvaluator (task completion, tool accuracy, relevance)
+- `evaluations/agent/evaluator.py` — placeholder runner
+- `evaluations/run.py` — master CLI: `python -m evaluations.run [--component stt|tts|rag|agent] [--output FILE]`
+- `tests/test_evaluations.py` — 56 tests
+
+### Decisions
+- **Self-contained Levenshtein**: no external dependency (avoid adding python-Levenshtein)
+- **Groundedness**: word-overlap between answer and retrieved context (proxy for hallucination)
+- **Acronym detection in TTS**: regex-based JEE/NEET/IIT/CBSE/NDA/AIIMS counting
+- **Real-time factor (RTF)**: latency_ms / (audio_duration × 1000); RTF < 1 = faster than real-time
+- **Simulated metrics as default**: runner falls back to simulated data when no real provider available; silent skip with log line
+- **CLI escape**: no emoji in output for Windows cp1252 compatibility
+
+### Test Results
+```
+56 passed in 0.26s (evaluations)
+295 passed in 6.52s (all tests)
+```
+
+**Status:** ✅ Complete (56/56 evaluation tests pass, 295/295 total)
+
+---
+
 Last updated: 2026-09-07
