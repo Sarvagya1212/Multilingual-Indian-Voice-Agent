@@ -1058,4 +1058,48 @@ experiments/<NNN_name>/
 
 ---
 
+## 25. Failure Analysis Framework (Prompt 8.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Files
+- `failures/failure_analysis.md` — structured failure log with 13 real entries
+- `failures/__init__.py` — FailureEntry dataclass, regex parser, FailureStats aggregator
+- `tests/test_failure_analysis.py` — 28 tests
+
+### Decisions
+- **Parser-validated summary table**: `failures/__init__.py` parses the markdown at runtime; `test_stats_match_documented_table` enforces the prose table matches the live counts. A test fails if someone updates the entries but forgets the table.
+- **Regex handles blank lines**: entries have a blank line between the title and metadata fields; the parser accepts both with/without.
+- **12 failure categories**: added "Test Infrastructure Failure" and "Build/Infrastructure Failure" beyond the 9 in the prompt template — both had multiple real occurrences.
+- **Honest "n/a" categories**: Tool/LLM/Latency/Barge-in categories have 0 entries; table shows `-` rather than fabricating severity.
+- **Prevention field is the differentiator**: every entry closes with a specific, actionable prevention step so the failure log is actionable, not just historical.
+
+### 13 Real Failures Documented
+| ID | Category | Severity | Summary |
+|----|----------|----------|---------|
+| F001 | STT Failure | Medium | Whisper drops ₹ symbol on Hindi numerals |
+| F002 | TTS Pronunciation Failure | Medium | TTS says "jeep" for "JEE" acronym |
+| F003 | RAG Failure | High | hash embedder similarities < 0.3 → min_similarity_score=0.0 |
+| F004 | RAG Failure | Medium | min_chunk_size=100 dropped short FAQ docs |
+| F005 | RAG Failure | Medium | `> 0` filter excluded zero-similarity candidates |
+| F006 | Language Detection Failure | Low | Roman-script Hinglish misclassified as English |
+| F007 | Test Infrastructure Failure | Medium | Wrong percentile expected values in evaluator tests |
+| F008 | Test Infrastructure Failure | Low | Silence-pad regex too strict for letter counting |
+| F009 | Build/Infrastructure Failure | High | Windows cp1252 crashes print() with emoji |
+| F010 | Build/Infrastructure Failure | Low | PowerShell 5.1 `&&` operator doesn't exist |
+| F011 | Test Infrastructure Failure | Low | Experiment test asserted skeleton after real run |
+| F012 | Prompt Failure | Medium | Tool-use prompt had no version pinning |
+| F013 | Test Infrastructure Failure | Medium | async retriever test called without await |
+
+### Test Results
+```
+28 passed in 0.05s (failure analysis)
+366 passed in 8.95s (all tests)
+```
+
+**Status:** ✅ Complete (28/28 failure analysis tests pass, 366/366 total)
+
+---
+
 Last updated: 2026-09-07
