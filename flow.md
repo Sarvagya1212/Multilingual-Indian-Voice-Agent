@@ -662,4 +662,74 @@ class LLMResponse:
 
 ---
 
+### Prompt 1.5 - Minimal Baseline Pipeline (2026-09-07)
+
+**Actions Taken:**
+1. Created `src/pipeline/types.py` with `AgentState` enum, `Session`, `ConversationMessage`, `PipelineMetrics` dataclasses
+2. Created `src/pipeline/__init__.py` exporting pipeline types
+3. Created `src/pipeline/orchestrator.py` with `ConversationOrchestrator` class wiring STT → LLM → TTS
+4. Created `src/pipeline/baseline.py` test script with synthetic audio generation and validation flow
+5. Created `tests/test_orchestrator.py` with 16 unit tests covering orchestrator, AgentState, Session, ConversationMessage
+6. All 16 orchestrator tests pass (90/90 total across the project)
+
+**Architecture Decisions:**
+- **Pipeline = STT → LLM → TTS**: Single `process_turn(audio: bytes) -> TTSResult` method
+- **State machine**: `AgentState` enum (IDLE, LISTENING, TRANSCRIBING, THINKING, CALLING_TOOL, GENERATING, SPEAKING, INTERRUPTED, ERROR) tracks lifecycle
+- **Barge-in ready**: `interrupt()` halts SPEAKING/GENERATING states; LISTENING cannot be interrupted (semantic: user is mid-utterance)
+- **Sliding-window context**: Last 5 conversation turns included in LLM messages for memory
+- **Latency telemetry**: `PipelineMetrics` records stt_ms, llm_ms, tts_ms, total_ms, tool_calls, errors per turn
+- **System prompt composition**: `_build_system_prompt()` combines versioned prompt files + language directive + user context
+- **Language-aware response**: Hindi → Hindi, Hinglish → Hinglish, otherwise English
+- **Provider composition**: Orchestrator wraps STT + LLM + TTS singletons; constructor accepts provider name overrides for A/B testing
+
+**Orchestrator Interface:**
+```python
+class ConversationOrchestrator:
+    def __init__(stt_provider, tts_provider, llm_provider)
+    @property state -> AgentState
+    def create_session() -> Session
+    async def process_turn(audio: bytes) -> TTSResult
+    def interrupt() -> bool
+    def get_conversation_history() -> list
+```
+
+**Pipeline Flow:**
+1. Receive `audio: bytes` (WAV/PCM)
+2. State: IDLE → TRANSCRIBING
+3. STT: audio → text + language
+4. State: TRANSCRIBING → THINKING
+5. LLM: text + history → response (with tool calls when Prompt 3.1 lands)
+6. State: THINKING → GENERATING
+7. TTS: response text → audio (with language-appropriate voice)
+8. State: GENERATING → SPEAKING → IDLE
+9. Record user + agent messages to session
+
+**Test Coverage (16 tests):**
+- `test_init` — providers wired, no session
+- `test_create_session` — Session object with UUID, IDLE state
+- `test_state_property` — state reflects session
+- `test_get_conversation_history` — empty + populated
+- `test_interrupt_*` — interrupt returns True only for SPEAKING/GENERATING; False for IDLE/LISTENING
+- `test_all_states_exist` — 9 expected AgentState values
+- `test_session_creation` / `test_session_with_context` — Session dataclass
+- `test_message_creation` / `test_message_with_metadata` — ConversationMessage dataclass
+
+**Test Results:**
+```
+16 passed in 0.30s (orchestrator)
+90 passed in 5.64s (all tests: 16 STT + 28 TTS + 30 LLM + 16 orchestrator)
+```
+
+**Baseline Test Script (`src/pipeline/baseline.py`):**
+- `create_test_wav(duration, sample_rate, frequency)` — synthetic modulated sine wave
+- `test_pipeline_with_synthetic_audio()` — verifies all 3 providers load, language detection works on 4 test cases (en/hi/hinglish)
+- `test_pipeline_with_api_keys()` — full STT → LLM → TTS roundtrip (requires API keys)
+- CLI: `python -m src.pipeline.baseline` (synthetic) or `--full` (real APIs)
+
+**Key Insight:** Pipeline proves the three layers integrate cleanly. Tool calling (Prompt 3.1) and RAG (Prompt 4.1) will slot into the LLM step without changing the orchestrator interface.
+
+**Status:** ✅ Complete (16/16 orchestrator tests pass, 90/90 total)
+
+---
+
 Last updated: 2026-09-07
