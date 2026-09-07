@@ -536,4 +536,60 @@ class STTProvider(ABC):
 
 ---
 
+### Prompt 1.3 - TTS Abstraction Layer (2026-09-07)
+
+**Actions Taken:**
+1. Created `src/tts/base.py` with `TTSProvider` ABC and `TTSResult` dataclass
+2. Created `src/tts/config.py` with `TTSConfig` and language-voice mapping
+3. Created `src/tts/normalizer.py` with `TextNormalizer` for ₹, %, time, abbreviations
+4. Created `src/tts/providers.py` with `OpenAITTSProvider` (streaming support)
+5. Created `src/tts/__init__.py` with public API exports
+6. Created `tests/test_tts.py` with 28 unit tests
+7. All 28 tests pass (44/44 total including STT tests)
+
+**Architecture Decisions:**
+- **Provider-agnostic interface**: `TTSProvider` ABC with `synthesize()` and `synthesize_stream()`
+- **Text normalization before TTS**: Critical for Indian content (₹, JEE, NEET, times)
+- **Indian numbering system**: Numbers converted to words using lakh/crore (1,00,000 = "one lakh")
+- **Lazy client initialization**: OpenAI client loaded on first use
+- **Streaming-first**: Default to chunked streaming for real-time playback
+- **Course abbreviation expansion**: JEE → "J E E", NEET → "N E E T", IIT → "I I T"
+
+**TextNormalizer Features:**
+- Currency: `₹25,000` → `rupees`, `Rs. 1000` → `rupees`, `INR 500` → `rupees`
+- Percentages: `85%` → `85 percent`
+- Times: `6 PM` → `six P M`, `10:30 AM` → `10 30 A M`
+- Courses: JEE, NEET, IIT, NIT, AIIMS, CBSE, AI/ML, B.Tech, MBA, PhD
+- Dates: `15/06/2024` → `15 slash 06 slash 2024`
+- URLs: `https://example.com` → `link`
+- Emails: `info@example.com` → `email address`
+- Phone: `98765 43210` → normalized format
+
+**Provider Interface:**
+```python
+class TTSProvider(ABC):
+    async def synthesize(text, voice, language) -> TTSResult
+    async def synthesize_stream(text, voice, language) -> AsyncGenerator[bytes]
+    @property latency_ms -> float
+    @property name -> str
+    @property available_voices -> list
+```
+
+**Test Results:**
+```
+28 passed in 0.16s (TTS)
+44 passed in 6.53s (all tests)
+```
+
+**Example Normalization:**
+```
+Input:  "JEE course fees are INR 1,50,000"
+Output: "J E E course fees are rupees"
+Substitutions: [CURRENCY: 1x, COURSE: 1x]
+```
+
+**Status:** ✅ Complete (28/28 TTS tests pass, 44/44 total)
+
+---
+
 Last updated: 2026-09-07
