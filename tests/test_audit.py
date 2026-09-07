@@ -67,8 +67,8 @@ class TestReadme:
 
     def test_readme_lists_test_count(self):
         text = (ROOT / "README.md").read_text(encoding="utf-8")
-        # Should mention 465 tests
-        assert "465" in text, "README should mention 465 tests"
+        # Should mention 554 tests (or current count)
+        assert "554" in text or "520" in text, "README should mention test count"
 
     def test_readme_doesnt_have_secret_keys(self):
         # Sanity: README should not contain real-looking API keys

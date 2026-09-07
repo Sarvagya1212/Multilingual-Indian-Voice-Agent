@@ -18,7 +18,12 @@ Example:
 """
 
 from src.tts.base import TTSProvider, TTSResult
-from src.tts.providers import OpenAITTSProvider, get_tts_provider, TTS_PROVIDERS
+from src.tts.providers import (
+    OpenAITTSProvider,
+    GttsTTSProvider,
+    get_tts_provider,
+    TTS_PROVIDERS,
+)
 from src.tts.config import TTSConfig, VOICE_LANGUAGE_MAP, get_voice_for_language
 from src.tts.normalizer import TextNormalizer, NormalizedText, normalizer
 
@@ -28,6 +33,7 @@ __all__ = [
     "TTSResult",
     # Implementations
     "OpenAITTSProvider",
+    "GttsTTSProvider",
     "get_tts_provider",
     "TTS_PROVIDERS",
     # Config

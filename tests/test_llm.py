@@ -12,7 +12,7 @@ from src.llm import (
     PROMPT_FILES,
 )
 from src.llm.config import LLMConfig
-from src.llm.providers import AnthropicLLMProvider, get_llm_provider
+from src.llm.providers import AnthropicLLMProvider, OllamaLLMProvider, get_llm_provider
 
 
 class TestMessage:
@@ -64,8 +64,9 @@ class TestLLMConfig:
 
     def test_default_config(self):
         config = LLMConfig()
-        assert config.provider == "anthropic"
-        assert config.model == "claude-sonnet-4-20250514"
+        # Defaults: free Ollama (override with LLMConfig(provider="anthropic") for paid)
+        assert config.provider == "ollama"
+        assert config.model == "llama3.1:latest"
         assert config.temperature == 0.7
 
     def test_custom_config(self):
@@ -136,7 +137,7 @@ class TestAnthropicProvider:
 
     def test_get_llm_provider_default(self):
         provider = get_llm_provider()
-        assert isinstance(provider, AnthropicLLMProvider)
+        assert isinstance(provider, OllamaLLMProvider)
 
     def test_get_llm_provider_by_name(self):
         provider = get_llm_provider("anthropic")

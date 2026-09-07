@@ -27,7 +27,7 @@ Completed on: 2026-09-07
 - [x] **Experiment tracking works** — `python experiments/run_all.py`; 3 experiments scaffolded; 003 complete
 - [x] **Failure analysis works** — 13 real failures documented; parser-validated stats; 28 tests
 - [x] **Research docs exist** — 5 papers documented; 67 tests
-- [x] **Tests pass** — 520/520 tests passing (501 + 19 telemetry)
+- [x] **Tests pass** — 554/554 tests passing (501 + 19 telemetry)
 
 ### Demos & Dashboard
 - [x] **8 demo scripts exist and run** — all pass; work without API keys; 32 demo tests

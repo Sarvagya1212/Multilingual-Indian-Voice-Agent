@@ -7,10 +7,10 @@ class LLMConfig(BaseModel):
     """Configuration for LLM providers."""
 
     # Provider selection
-    provider: str = "anthropic"  # anthropic, openai
+    provider: str = "ollama"  # ollama (free), anthropic (paid)
 
     # Model selection
-    model: str = "claude-sonnet-4-20250514"
+    model: str = "llama3.1:latest"  # free via Ollama; change to "claude-sonnet-4-20250514" for Anthropic
     max_tokens: int = 1024
 
     # Generation parameters

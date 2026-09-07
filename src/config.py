@@ -9,12 +9,12 @@ class Settings(BaseSettings):
     whisper_device: str = "cpu"
 
     # TTS Configuration
-    tts_provider: str = "openai"
+    tts_provider: str = "gtts"   # free (gTTS); use "openai" for paid
     tts_voice: str = "alloy"
 
     # LLM Configuration
-    llm_provider: str = "anthropic"
-    llm_model: str = "claude-sonnet-4-20250514"
+    llm_provider: str = "ollama"  # free (local); use "anthropic" for paid
+    llm_model: str = "llama3.1:latest"  # change to "claude-sonnet-4-20250514" for Anthropic
 
     # Vector Database
     vector_db_provider: str = "chromadb"

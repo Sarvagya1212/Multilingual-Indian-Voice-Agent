@@ -7,7 +7,7 @@ class TTSConfig(BaseModel):
     """Configuration for TTS providers."""
 
     # Provider selection
-    provider: str = "openai"
+    provider: str = "gtts"  # gtts (free), openai (paid)
 
     # OpenAI TTS options
     voice: str = "alloy"  # alloy, echo, fable, nova, shimmer

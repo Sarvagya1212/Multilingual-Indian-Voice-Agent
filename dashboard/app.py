@@ -18,7 +18,14 @@ point the dashboard at any JSONL log file.
 """
 from __future__ import annotations
 
+import sys
 from pathlib import Path
+
+# Ensure the project root is on sys.path so the `dashboard` package is importable
+# regardless of whether Streamlit changes the working directory.
+_root = Path(__file__).resolve().parent.parent
+if str(_root) not in sys.path:
+    sys.path.insert(0, str(_root))
 
 import streamlit as st
 

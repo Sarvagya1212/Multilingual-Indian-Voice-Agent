@@ -40,7 +40,12 @@ from src.llm.base import (
     LLMResponse,
     ToolCall,
 )
-from src.llm.providers import AnthropicLLMProvider, get_llm_provider, LLM_PROVIDERS
+from src.llm.providers import (
+    AnthropicLLMProvider,
+    OllamaLLMProvider,
+    get_llm_provider,
+    LLM_PROVIDERS,
+)
 from src.llm.config import (
     LLMConfig,
     load_prompt,
@@ -57,6 +62,7 @@ __all__ = [
     "ToolCall",
     # Implementations
     "AnthropicLLMProvider",
+    "OllamaLLMProvider",
     "get_llm_provider",
     "LLM_PROVIDERS",
     # Config

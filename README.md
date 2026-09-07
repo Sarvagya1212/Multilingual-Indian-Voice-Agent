@@ -33,8 +33,8 @@ graph TD
 | Component | Technology | Location |
 |-----------|------------|----------|
 | STT | OpenAI Whisper (base) | `src/stt/` |
-| TTS | OpenAI TTS (streaming) | `src/tts/` |
-| LLM | Anthropic Claude Sonnet 4 | `src/llm/` |
+| TTS | **gTTS (free) / OpenAI TTS (paid)** | `src/tts/` |
+| LLM | **Ollama llama3.1 (free, local) / Anthropic Claude (paid)** | `src/llm/` |
 | RAG | LocalEmbedder + re-ranker | `src/rag/` |
 | Gateway | WebSocket + VAD | `src/gateway/` |
 | Agent | State machine + tools | `src/agent/` |
@@ -43,11 +43,12 @@ graph TD
 
 ## Features
 
+- **Free by default**: Ollama (local llama3.1) + gTTS (Google Translate) — no API keys required
 - **Multilingual**: English, Hindi, Hinglish with Devanagari-ratio detector
 - **RAG**: 512-char chunks, lexical re-ranker, 5 education domain documents
 - **Agent**: State machine with 9 states; 5 tools (search, details, eligibility, fee, demo)
 - **Text normalization**: ₹, JEE/NEET/IIT abbreviations, Indian numbering, times
-- **Evaluation**: 520 tests covering all components
+- **Evaluation**: 554 tests covering all components
 - **Experiment tracking**: 3 experiments (001 complete, 002 skeleton, 003 complete)
 - **Failure analysis**: 13 real failures documented with root cause and fix
 
@@ -57,8 +58,13 @@ graph TD
 # 1. Install
 pip install -r requirements.txt
 
-# 2. Configure
-cp .env.example .env          # add OPENAI_API_KEY and ANTHROPIC_API_KEY
+# 2. (Free defaults) Start Ollama and pull a model
+ollama serve              # runs in background
+ollama pull llama3.1      # one-time, ~5 GB
+
+# 2b. (Optional) For paid providers instead
+# cp .env.example .env  # add OPENAI_API_KEY and ANTHROPIC_API_KEY
+# Then override in src/config.py:  llm_provider = "anthropic",  tts_provider = "openai"
 
 # 3. Run demos (no keys needed for most demos)
 python demos/run_all.py
@@ -101,7 +107,7 @@ python demos/demo_08_dashboard.py       # dashboard data layer
 | Language detection accuracy | > 90% | **100%** (5 labelled samples) |
 | Tool call schema validation | > 95% | ✅ (5/5 tools validated) |
 | Experiment system | - | ✅ (3 experiments scaffolded) |
-| Test suite | - | **520 tests passing** |
+| Test suite | - | **554 tests passing** |
 | Failure log | - | **13 failures documented** |
 
 *Run `python -m evaluations.run` for live metrics. End-to-end STT/TTS WER requires labelled audio data.*
@@ -132,7 +138,7 @@ Multilingual-Indian-Voice-Agent/
 ├── failures/              # Failure analysis framework + 13 documented failures
 ├── dashboard/             # Streamlit metrics dashboard
 ├── demos/                 # 8 executable demo scripts
-├── tests/                 # 15 test files, 520 tests
+├── tests/                 # 15 test files, 554 tests
 ├── docs/research/         # 5 research papers documented
 └── prompts/               # PROMPTS.md
 ```

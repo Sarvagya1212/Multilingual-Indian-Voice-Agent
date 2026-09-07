@@ -152,7 +152,8 @@ class TestTTSConfig:
     def test_default_config(self):
         from src.tts.config import TTSConfig
         config = TTSConfig()
-        assert config.provider == "openai"
+        # Defaults: free gTTS (override with TTSConfig(provider="openai") for paid)
+        assert config.provider == "gtts"
         assert config.voice == "alloy"
         assert config.model == "tts-1"
 
@@ -204,9 +205,9 @@ class TestTTSProviders:
         assert provider.available_voices == ["alloy", "echo", "fable", "nova", "shimmer"]
 
     def test_get_tts_provider_default(self):
-        from src.tts import get_tts_provider, OpenAITTSProvider
+        from src.tts import get_tts_provider, GttsTTSProvider
         provider = get_tts_provider()
-        assert isinstance(provider, OpenAITTSProvider)
+        assert isinstance(provider, GttsTTSProvider)
 
     def test_get_tts_provider_by_name(self):
         from src.tts import get_tts_provider, OpenAITTSProvider

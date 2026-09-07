@@ -304,10 +304,239 @@ class AnthropicLLMProvider(LLMProvider):
         return f"anthropic-{self.model}"
 
 
+class OllamaLLMProvider(LLMProvider):
+    """Ollama local LLM provider.
+
+    Calls a local Ollama server (http://localhost:11434) for free inference.
+    Supports llama3.1, mistral, qwen2.5, and other Ollama models.
+
+    Setup:
+        1. Install Ollama: https://ollama.com
+        2. Pull a model:  ollama pull llama3.1
+        3. Start server:  ollama serve   (runs automatically on app start)
+    """
+
+    def __init__(
+        self,
+        model: str = "llama3.1:latest",
+        base_url: str = "http://localhost:11434",
+        config: LLMConfig = None,
+    ):
+        """Initialize Ollama provider.
+
+        Args:
+            model: Ollama model name (e.g. llama3.1:latest, mistral)
+            base_url: Ollama API base URL
+            config: Optional LLMConfig
+        """
+        self.config = config or LLMConfig()
+        self.model = model or self.config.model
+        self.base_url = base_url.rstrip("/")
+        self._latency_ms = 0.0
+        self._client = None
+
+        logger.info(f"OllamaLLMProvider initialized: model={self.model}, base_url={self.base_url}")
+
+    @property
+    def client(self):
+        """Lazy-load Ollama client."""
+        if self._client is None:
+            import ollama
+            self._client = ollama.AsyncClient(host=self.base_url)
+        return self._client
+
+    async def chat(
+        self,
+        messages: List[Message],
+        tools: Optional[List[Dict]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1024,
+    ) -> LLMResponse:
+        """Generate a chat completion via Ollama.
+
+        Args:
+            messages: Conversation messages
+            tools: Tool schemas (OpenAI format — converted for Ollama)
+            temperature: Sampling temperature
+            max_tokens: Max tokens to generate
+
+        Returns:
+            LLMResponse with content and tool calls
+        """
+        start = time.time()
+
+        # Convert messages to Ollama format
+        ollama_messages = self._convert_messages(messages)
+
+        # Build request kwargs
+        request_kwargs: Dict[str, Any] = {
+            "model": self.model,
+            "messages": ollama_messages,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+            "stream": False,
+        }
+
+        # Ollama tool calling — tools come in as a list of tool definitions
+        # We attach them so Ollama can respond with tool_calls if the model supports it.
+        if tools:
+            # Convert OpenAI tool schema to Ollama format
+            ollama_tools = self._convert_tools(tools)
+            request_kwargs["tools"] = ollama_tools
+
+        try:
+            response = await self.client.chat(**request_kwargs)
+        except Exception as e:
+            logger.error(f"Ollama API call failed: {e}")
+            raise
+
+        self._latency_ms = (time.time() - start) * 1000
+
+        # Parse response
+        content = response["message"]["content"]
+        tool_calls = []
+
+        # Ollama returns tool calls as part of the message tool_calls field
+        # (format: [{"function": {"name": "...", "arguments": {...}}}])
+        # The field may be missing or None when no tool is called.
+        raw_tool_calls = response["message"].get("tool_calls") or []
+        for tc in raw_tool_calls:
+            import uuid
+            tool_calls.append(ToolCall(
+                id=str(uuid.uuid4()),
+                name=tc["function"]["name"],
+                arguments=tc["function"]["arguments"],
+            ))
+
+        logger.info(
+            f"Ollama: content={len(content)} chars, tools={len(tool_calls)}, "
+            f"({self._latency_ms:.0f}ms)"
+        )
+
+        return LLMResponse(
+            content=content,
+            tool_calls=tool_calls,
+            finish_reason="stop",
+            usage={},
+        )
+
+    async def chat_stream(
+        self,
+        messages: List[Message],
+        tools: Optional[List[Dict]] = None,
+        temperature: float = 0.7,
+        max_tokens: int = 1024,
+    ) -> AsyncGenerator[str, None]:
+        """Stream a chat completion from Ollama."""
+        ollama_messages = self._convert_messages(messages)
+        request_kwargs: Dict[str, Any] = {
+            "model": self.model,
+            "messages": ollama_messages,
+            "options": {
+                "temperature": temperature,
+                "num_predict": max_tokens,
+            },
+            "stream": True,
+        }
+        if tools:
+            request_kwargs["tools"] = self._convert_tools(tools)
+
+        try:
+            # AsyncClient.chat returns an async iterator directly when stream=True
+            stream = await self.client.chat(**request_kwargs)
+            async for part in stream:
+                # Each part is a dict like {"message": {"content": "..."}, ...}
+                if part.get("message", {}).get("content"):
+                    yield part["message"]["content"]
+        except Exception as e:
+            logger.error(f"Ollama streaming failed: {e}")
+            raise
+
+    async def detect_language(self, text: str) -> str:
+        """Detect the primary language of text.
+
+        Uses Devanagari character ratio.
+        """
+        if not text or not text.strip():
+            return "en"
+
+        hindi_chars = set(
+            "अआइईउऊऋएऐओऔकखगघङचछजझञटठडढणतथदधनपफबभमयरलवशषसह"
+            "ािीुूृेैोौंःँ"
+        )
+
+        hindi_count = sum(1 for c in text if c in hindi_chars)
+        total_chars = len([c for c in text if c.isalpha()])
+
+        if total_chars == 0:
+            return "en"
+
+        hindi_ratio = hindi_count / total_chars
+
+        if hindi_ratio > 0.5:
+            return "hi"
+        elif hindi_ratio > 0.15:
+            return "hinglish"
+        else:
+            return "en"
+
+    def _convert_messages(self, messages: List[Message]) -> List[Dict]:
+        """Convert our Message objects to Ollama format."""
+        ollama_messages = []
+        for msg in messages:
+            role = {
+                MessageRole.SYSTEM: "system",
+                MessageRole.USER: "user",
+                MessageRole.ASSISTANT: "assistant",
+                MessageRole.TOOL_RESULT: "tool",
+            }.get(msg.role, "user")
+
+            if msg.role == MessageRole.TOOL_RESULT:
+                ollama_messages.append({
+                    "role": "tool",
+                    "content": msg.content,
+                    "tool_call_id": msg.tool_call_id,
+                })
+            else:
+                ollama_messages.append({
+                    "role": role,
+                    "content": msg.content,
+                })
+        return ollama_messages
+
+    def _convert_tools(self, tools: List[Dict]) -> List[Dict]:
+        """Convert OpenAI-format tools to Ollama format.
+
+        Ollama expects tools as:
+        {
+            "type": "function",
+            "function": {
+                "name": "...",
+                "description": "...",
+                "parameters": {...}
+            }
+        }
+        The API handles this natively for most models.
+        """
+        return tools
+
+    @property
+    def latency_ms(self) -> float:
+        return self._latency_ms
+
+    @property
+    def name(self) -> str:
+        return f"ollama-{self.model}"
+
+
 # Provider registry
 LLM_PROVIDERS = {
     "anthropic": AnthropicLLMProvider,
     "claude": AnthropicLLMProvider,
+    "ollama": OllamaLLMProvider,
+    "llama": OllamaLLMProvider,
 }
 
 
