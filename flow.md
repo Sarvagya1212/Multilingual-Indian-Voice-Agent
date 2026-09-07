@@ -1010,4 +1010,52 @@ experiments/<NNN_name>/
 
 ---
 
+## 24. Metrics Dashboard (Prompt 7.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Files
+- `dashboard/app.py` — Streamlit entrypoint, sidebar-configurable log path + refresh
+- `dashboard/data_source.py` — JSONL loader, demo-data seeder, aggregator
+- `dashboard/components/metrics.py` — top-row KPIs (conversations, latency, groundedness, tool success)
+- `dashboard/components/charts.py` — daily counts, latency-by-component, language pie
+- `dashboard/components/conversation_viewer.py` — recent-conversations expanders
+- `tests/test_dashboard_app.py` — 23 tests
+
+### Decisions
+- **JSONL over a database**: append-only events file is trivial to ship, log, and tail. No migrations.
+- **Demo data on first run**: if no `logs/events.jsonl` exists, the dashboard seeds `logs/demo_events.jsonl` with 45 synthetic `turn_complete` events so the UI is non-empty on a fresh clone.
+- **Honest "n/a" for WER**: STT WER requires labelled transcripts; we don't fabricate a number. The metric card shows "n/a" with a help link to `evaluations.run --component stt`.
+- **Sidebar-driven config**: log path, refresh interval, and conversation count are all slider/text inputs — no code changes needed to point at a new log.
+- **Streamlit emoji → ASCII**: page icon is `[V]` not 🎓 to avoid Windows cp1252 encoding errors when the page title prints.
+- **Aggregation is pure functions**: `aggregate_metrics(events)` is testable in isolation (no Streamlit) — dashboard is just a thin presentation layer.
+- **Auto-refresh off by default**: `refresh_interval=0` is manual-only; flipping it on costs a rerun cycle.
+
+### Dashboard Layout
+```
+┌─────────────────────────────────────────────────────┐
+│  Voice Agent Dashboard                              │
+│  Loaded 45 events from logs/events.jsonl (demo)     │
+├──────────┬──────────┬──────────────┬───────────────┤
+│ Convos   │ Avg ms   │ RAG Ground.  │ Tool Success  │
+├──────────┴──────────┴──────────────┴───────────────┤
+│  STT WER (n/a)        │  Top Language              │
+├─────────────────────────────────────────────────────┤
+│  Metrics Over Time — [Conversations|Latency|Lang]   │
+├─────────────────────────────────────────────────────┤
+│  Recent Conversations (collapsible per turn)        │
+└─────────────────────────────────────────────────────┘
+```
+
+### Test Results
+```
+23 passed in 0.13s (dashboard)
+338 passed in 5.41s (all tests)
+```
+
+**Status:** ✅ Complete (23/23 dashboard tests pass, 338/338 total)
+
+---
+
 Last updated: 2026-09-07
