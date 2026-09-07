@@ -1,0 +1,15 @@
+{
+  "experiment_id": "001_whisper_model_comparison",
+  "hypothesis": "base model provides best accuracy-latency tradeoff for Indian English, Hindi, Hinglish on CPU",
+  "models": ["tiny", "base", "small"],
+  "dataset": {
+    "languages": ["en", "hi", "hinglish"],
+    "samples_per_language": 20,
+    "path": "datasets/stt_benchmark/",
+    "format": "wav_16kHz_mono"
+  },
+  "metrics": ["wer", "cer", "latency_ms", "rtf"],
+  "hardware": "cpu",
+  "date": "2026-09-07",
+  "status": "complete"
+}

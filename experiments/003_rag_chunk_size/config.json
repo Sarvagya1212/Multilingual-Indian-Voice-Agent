@@ -1,0 +1,12 @@
+{
+  "experiment_id": "003_rag_chunk_size",
+  "hypothesis": "512-char chunks with 50-char overlap provide best recall/relevance tradeoff",
+  "chunk_sizes": [256, 512, 1024],
+  "chunk_overlap": 50,
+  "embedder": "local",
+  "embedder_dimension": 384,
+  "test_queries": 10,
+  "metrics": ["retrieval_recall", "context_relevance", "keyword_coverage"],
+  "date": "2026-09-07",
+  "status": "complete"
+}

@@ -956,4 +956,58 @@ query → embed_query → cosine search → Reranker → top-k → context strin
 
 ---
 
+## 23. Experiment Tracking System (Prompt 6.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Architecture
+```
+experiments/<NNN_name>/
+├── notes.md      ← hypothesis, setup, results, analysis, decision
+├── config.json   ← machine-readable hypothesis + status
+├── run.py        ← standalone runner
+└── results.json  ← raw output (created when run)
+```
+
+### Files
+- `experiments/README.md` — experiment structure + conventions
+- `experiments/experiments_index.md` — status table
+- `experiments/001_whisper_model_comparison/` — complete (base model best balance)
+- `experiments/002_tts_provider_comparison/` — skeleton
+- `experiments/003_rag_chunk_size/` — complete (512-char chunks win)
+- `experiments/run_all.py` — orchestrator
+- `tests/test_experiments.py` — 20 tests
+
+### Decisions
+- **Convention: zero-padded ID + snake_case name** (`003_rag_chunk_size`) — sortable, greppable
+- **Single hypothesis per experiment**: change one variable, measure one outcome (no confounded A/B)
+- **≥3 trials per config**: statistical robustness is the floor, not the ceiling
+- **Decision recorded explicitly**: ship / iterate / abandon — no "maybe"
+- **Skeleton vs Complete**: skeleton = notes + template only; complete = results.json populated + notes.md updated
+- **Local-first**: experiments run on a laptop without API keys; CI-friendly
+
+### Experiment 003 Results (RAG Chunk Size)
+| Chunk | # Chunks | Recall | Keyword Coverage |
+|-------|----------|--------|------------------|
+| 256   | 20       | 100%   | 86.67%           |
+| 512   | 11       | 100%   | **90.00%**       |
+| 1024  | 6        | 100%   | 90.00%           |
+
+**Decision:** Ship 512-char chunks with 50-char overlap as the default in `RAGConfig`.
+- 100% recall on 10 ground-truth queries
+- Highest keyword coverage tied with 1024
+- 11 chunks: middle ground between precision (256) and context (1024)
+- 45% fewer chunks to embed than 256 → lower cost
+
+### Test Results
+```
+20 passed in 0.20s (experiments)
+315 passed in 5.37s (all tests)
+```
+
+**Status:** ✅ Complete (20/20 experiment tests pass, 315/315 total)
+
+---
+
 Last updated: 2026-09-07

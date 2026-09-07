@@ -1,0 +1,18 @@
+{
+  "experiment_id": "002_tts_provider_comparison",
+  "hypothesis": "TTS-1-HD offers better pronunciation of Indian acronyms vs TTS-1",
+  "providers": [
+    {"name": "openai_tts1", "model": "tts-1", "voice": "alloy"},
+    {"name": "openai_tts1hd", "model": "tts-1-hd", "voice": "alloy"}
+  ],
+  "dataset": {
+    "languages": ["en", "hi", "hinglish"],
+    "sentences_per_language": 20,
+    "includes_acronyms": true,
+    "includes_phone_numbers": true,
+    "includes_currency": true
+  },
+  "metrics": ["latency_ms", "rtf", "pronunciation_score"],
+  "date": "2026-09-07",
+  "status": "skeleton"
+}
