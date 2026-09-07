@@ -1184,4 +1184,41 @@ experiments/<NNN_name>/
 
 ---
 
+## 28. Final Audit & Documentation (Prompt 12.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Files Updated
+- `README.md` — actual numbers, working demo commands, full project structure
+- `CHANGELOG.md` — v0.1.0 and v0.2.0 entries with all changes and fixes
+- `flow.md` — this section (28)
+- `audit.md` — final audit checklist with top 5 weaknesses
+
+### Key Numbers
+| Metric | Value |
+|--------|-------|
+| Test files | 15 |
+| Tests passing | 465 |
+| Source files (.py) | 44 |
+| Experiments | 3 (2 complete, 1 skeleton) |
+| Failures documented | 13 |
+| Research papers | 5 |
+| Demos | 8 |
+| Documentation pages | 9 |
+
+### Decisions
+- **Honest audit**: streaming and WebRTC marked `[ ]` (not done), not `[x]`. The audit is the source of truth, not a sales document.
+- **Top 5 weaknesses named**: labelled STT data, half-duplex, soft barge-in, cross-session memory, RAG-as-judge. Each maps to a specific metric target.
+- **Production gap analysis**: "What Would Be Needed to Ship" table with effort estimates.
+- **CHANGELOG follows Keep-a-Changelog**: 0.1.0 initial structure, 0.2.0 RAG/eval/experiments/dashboard/demos/failures.
+- **README test commands verified**: `python -m pytest` and `python demos/run_all.py` both actually work.
+
+### Status: ✅ Project complete
+
+All 12 prompts shipped. 465 tests pass. 8 demos run. Dashboard launches.
+Ready for portfolio review or production hardening.
+
+---
+
 Last updated: 2026-09-07

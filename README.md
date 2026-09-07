@@ -1,175 +1,164 @@
 # Multilingual Indian Voice Agent
 
-A real-time conversational AI voice agent for an Indian education counsellor, supporting English, Hindi, Hinglish, and extensible to other Indian languages.
-
-## Project Overview
-
-This project demonstrates a complete voice AI pipeline with:
-- Real-time speech-to-text (STT) for Indian languages
-- Language detection and code-switching support
-- Conversational agent with tool calling
-- Retrieval-Augmented Generation (RAG) for knowledge
-- Text-to-speech (TTS) with Indian accent support
-- Interruption handling (barge-in)
-- Full evaluation and observability framework
+A real-time conversational AI voice agent for an Indian education counsellor, supporting
+English, Hindi, Hinglish (code-switching), and extensible to other Indian languages.
+Built as a portfolio-quality AI/ML internship demonstration.
 
 ## Architecture
 
 ```mermaid
 graph TD
-    A[User Audio] --> B[Voice Gateway]
-    B --> C[VAD]
-    C --> D[STT]
-    D --> E[Language Detection]
-    E --> F[Conversation Orchestrator]
-    F --> G[Memory]
-    F --> H[RAG]
-    F --> I[Tool Calling]
-    F --> J[LLM]
-    J --> K[Response Pipeline]
-    K --> L[Text Normalization]
-    L --> M[TTS]
-    M --> N[Audio Streaming]
-    N --> A
+    A[User Microphone] --> B[Voice Gateway]
+    B -->|WebSocket| C[VAD: Energy-based]
+    C -->|Speech Segments| D[STT: Whisper]
+    D -->|Transcript + Lang| E[Language Detection]
+    E --> F[Agent Orchestrator]
+    F --> G[Short-term Memory]
+    F --> H[RAG: Knowledge Base]
+    F --> I[Tool Registry]
+    F --> J[Claude Sonnet 4]
+    H --> K[Vector Store + Re-ranker]
+    I --> L[Course Tools]
+    J --> M[Response]
+    M --> N[Text Normalizer]
+    N --> O[TTS: OpenAI]
+    O -->|Audio Stream| B
+    B -->|Audio Out| A
+    F --> P[Telemetry]
+    P --> Q[Streamlit Dashboard]
 ```
+
+## Components
+
+| Component | Technology | Location |
+|-----------|------------|----------|
+| STT | OpenAI Whisper (base) | `src/stt/` |
+| TTS | OpenAI TTS (streaming) | `src/tts/` |
+| LLM | Anthropic Claude Sonnet 4 | `src/llm/` |
+| RAG | LocalEmbedder + re-ranker | `src/rag/` |
+| Gateway | WebSocket + VAD | `src/gateway/` |
+| Agent | State machine + tools | `src/agent/` |
+| Evaluations | WER, groundedness, latency | `evaluations/` |
+| Dashboard | Streamlit | `dashboard/` |
 
 ## Features
 
-- **Multilingual Support**: English, Hindi, Hinglish (code-switching)
-- **Real-time STT**: Streaming transcription with language detection
-- **Conversational Agent**: State-machine based orchestration
-- **Tool Calling**: Course search, eligibility, fees, scheduling
-- **RAG Pipeline**: Vector search over education knowledge base
-- **Natural TTS**: Indian accent with text normalization
-- **Barge-in Handling**: Voice activity detection for interruptions
-- **Evaluation Framework**: WER, latency, groundedness, tool accuracy
-- **Dashboard**: Real-time metrics and conversation inspection
+- **Multilingual**: English, Hindi, Hinglish with Devanagari-ratio detector
+- **RAG**: 512-char chunks, lexical re-ranker, 5 education domain documents
+- **Agent**: State machine with 9 states; 5 tools (search, details, eligibility, fee, demo)
+- **Text normalization**: ₹, JEE/NEET/IIT abbreviations, Indian numbering, times
+- **Evaluation**: 465 tests covering all components
+- **Experiment tracking**: 3 experiments (001 complete, 002 skeleton, 003 complete)
+- **Failure analysis**: 13 real failures documented with root cause and fix
 
-## Technology Choices
+## Quick Start
 
-| Component | Technology | Rationale |
-|-----------|------------|-----------|
-| STT | OpenAI Whisper (base) | Strong multilingual support, good Hindi/English accuracy |
-| TTS | OpenAI TTS | High quality, streaming support |
-| LLM | Anthropic Claude Sonnet 4 | Strong tool use, reasoning |
-| Vector DB | ChromaDB | Local, easy setup, good performance |
-| Framework | Python asyncio | Native async for real-time audio |
-
-## Setup Instructions
-
-### Prerequisites
-- Python 3.10+
-- OpenAI API key
-- Anthropic API key
-
-### Installation
 ```bash
-# Clone and enter directory
-cd Multilingual-Indian-Voice-Agent
-
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # Linux/Mac
-# .venv\Scripts\activate   # Windows
-
-# Install dependencies
+# 1. Install
 pip install -r requirements.txt
 
-# Configure environment
-cp .env.example .env
-# Edit .env with your API keys
-```
+# 2. Configure
+cp .env.example .env          # add OPENAI_API_KEY and ANTHROPIC_API_KEY
 
-### Running the Agent
-```bash
-# Run voice agent (terminal-based)
-python -m src.main
+# 3. Run demos (no keys needed for most demos)
+python demos/run_all.py
 
-# Run dashboard
+# 4. Run the evaluation suite
+python -m evaluations.run
+
+# 5. Launch the dashboard
 streamlit run dashboard/app.py
 ```
 
-## Demo Instructions
+## Demos
 
 ```bash
-# Run all demos
-python -m demos.run_all
+# Run all 8 demos
+python demos/run_all.py
 
-# Individual demos
-python demos/demo_01_english.py
-python demos/demo_02_hindi.py
-python demos/demo_03_hinglish.py
-python demos/demo_04_tool_calling.py
-python demos/demo_05_rag.py
-python demos/demo_06_interruption.py
-python demos/demo_07_failure_recovery.py
-python demos/demo_08_dashboard.py
+# Run individual demos
+python demos/demo_01_english.py       # single-turn English
+python demos/demo_02_hindi.py         # Devanagari Hindi
+python demos/demo_03_hinglish.py       # code-switching
+python demos/demo_04_tool_calling.py   # tool registry
+python demos/demo_05_rag.py            # real RAG pipeline (no API key)
+python demos/demo_06_interruption.py   # cooperative cancellation
+python demos/demo_07_failure_recovery.py # ERROR -> IDLE
+python demos/demo_08_dashboard.py       # dashboard data layer
 ```
 
 ## Evaluation Results
 
-| Metric | Target | Current |
-|--------|--------|---------|
-| End-to-end Latency | < 3000ms | TBD |
-| STT WER (English) | < 10% | TBD |
-| STT WER (Hindi) | < 15% | TBD |
-| STT WER (Hinglish) | < 20% | TBD |
-| Tool Call Accuracy | > 90% | TBD |
-| RAG Groundedness | > 85% | TBD |
+| Metric | Target | Actual |
+|--------|--------|--------|
+| RAG retrieval recall | > 80% | **100%** (10 queries, 512-char chunks) |
+| RAG keyword coverage | - | **90%** (512-char chunks) |
+| Language detection accuracy | > 90% | **100%** (5 labelled samples) |
+| Tool call schema validation | > 95% | ✅ (5/5 tools validated) |
+| Experiment system | - | ✅ (3 experiments scaffolded) |
+| Test suite | - | **465 tests passing** |
+| Failure log | - | **13 failures documented** |
 
-*Run `python -m evaluations.run` for current results*
+*Run `python -m evaluations.run` for live metrics. End-to-end STT/TTS WER requires labelled audio data.*
 
-## Limitations
+## Key Decisions
 
-- Requires API keys for STT/TTS/LLM
-- No offline mode (all cloud-based)
-- Limited to education domain
-- Single-turn memory only
-- No real WebRTC streaming yet
-
-## Future Work
-
-- [ ] Local STT (Whisper.cpp) for offline support
-- [ ] Real WebRTC/WebSocket streaming
-- [ ] Additional Indian languages (Tamil, Telugu, Bengali)
-- [ ] Fine-tuned intent classifier
-- [ ] Speaker diarization
-- [ ] Production deployment (Docker, K8s)
+- **Whisper `base` model** selected over `tiny` for accuracy (experiment 001)
+- **512-char chunks** selected over 256/1024 for recall + keyword coverage (experiment 003)
+- **Hash-based LocalEmbedder** as default (no API key needed; OpenAIEmbedder swaps in when `OPENAI_API_KEY` is set)
+- **`min_similarity_score=0.0`** — re-ranker handles quality; cosine alone is too strict for the hash embedder
+- **`>= 0` filter** in vector store — non-negative scores are valid re-ranker candidates
+- **State machine over implicit LLM** — agent is bounded by valid transition edges
 
 ## Project Structure
 
 ```
 Multilingual-Indian-Voice-Agent/
-├── README.md
-├── flow.md                      # Decision log
-├── ARCHITECTURE.md
-├── EXPERIMENTS.md
-├── EVALUATION.md
-├── CHANGELOG.md
-├── failure_analysis.md
-├── .env.example
-├── requirements.txt
-├── src/
-│   ├── config.py
-│   ├── logger.py
-│   ├── stt/
-│   ├── tts/
-│   ├── llm/
-│   ├── agent/
-│   ├── pipeline/
-│   ├── gateway/
-│   └── rag/
-├── prompts/
-├── evaluations/
-├── experiments/
-├── datasets/
-├── knowledge_base/
-├── tests/
-├── dashboard/
-├── docs/
-└── demos/
+├── src/                    # Source packages (44 .py files)
+│   ├── stt/               # STT abstraction + Whisper provider
+│   ├── tts/               # TTS abstraction + OpenAI provider + normalizer
+│   ├── llm/               # LLM abstraction + Anthropic provider
+│   ├── agent/             # State machine, tools, memory
+│   ├── pipeline/          # Orchestrator, types, baseline test
+│   ├── gateway/           # WebSocket server, VAD, audio utils
+│   └── rag/               # Chunker, embedder, vector store, re-ranker, retriever
+├── evaluations/            # Evaluator framework (stt, tts, rag, agent)
+├── experiments/            # Experiment tracking (001, 002, 003)
+├── failures/              # Failure analysis framework + 13 documented failures
+├── dashboard/             # Streamlit metrics dashboard
+├── demos/                 # 8 executable demo scripts
+├── tests/                 # 15 test files, 465 tests
+├── docs/research/         # 5 research papers documented
+└── prompts/               # PROMPTS.md
 ```
+
+## Limitations
+
+- **No labelled audio dataset** — STT WER and TTS MOS are not yet measured
+- **VAD batch processing** — true streaming (local-attention Whisper) not yet implemented
+- **Half-duplex** — soft barge-in (user talks over TTS) requires WebRTC + echo cancellation
+- **Single-session memory** — no cross-session persistence (Redis/PostgreSQL stub exists)
+
+## Future Work
+
+- [ ] Label STT evaluation dataset for WER measurement
+- [ ] Implement whisper_streaming for true partial-result streaming
+- [ ] WebRTC full-duplex with echo cancellation for soft barge-in
+- [ ] Cross-encoder re-ranker (BGE-reranker) for RAG
+- [ ] Redis-backed long-term memory
+- [ ] Local Whisper.cpp for offline mode
+
+## Documentation
+
+| File | Purpose |
+|------|---------|
+| `flow.md` | Decision log with 27 sections |
+| `ARCHITECTURE.md` | System diagrams and component descriptions |
+| `EVALUATION.md` | Metrics definitions and methodology |
+| `failures/failure_analysis.md` | 13 real failures with root cause and fix |
+| `docs/research/` | 5 papers that shaped architectural decisions |
+| `experiments/experiments_index.md` | Status of all experiments |
 
 ## License
 
-MIT License
+MIT

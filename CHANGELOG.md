@@ -5,63 +5,88 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [0.2.0] - 2026-09-07
 
 ### Added
-- Project structure initialization
-- Core documentation files (README, ARCHITECTURE, EVALUATION, EXPERIMENTS, flow.md, failure_analysis.md)
-- Configuration templates (.env.example, requirements.txt)
-- Initial Python package structure
-- Initial prompt files
 
-## [0.1.0] - 2024-09-07
-
-### Added
-- Initial project structure with all directories
-- Comprehensive documentation suite
-- Flow.md decision log with 27 sections
-- Architecture documentation with Mermaid diagrams
-- Evaluation framework with metrics definitions
-- Experiment tracking template with 10 planned experiments
-- Failure analysis framework
-- Environment configuration template
-- Pinned requirements.txt
-
-### Changed
-- N/A
-
-### Deprecated
-- N/A
-
-### Removed
-- N/A
+- **RAG pipeline** (`src/rag/`): sentence-aware chunker (512-char, 50-char overlap),
+  pluggable embedder (LocalEmbedder hash-based + OpenAIEmbedder), in-memory vector store,
+  lexical re-ranker (60/30/10 cosine/keyword/length), retriever with metadata filtering,
+  knowledge base with 5 education domain documents (JEE, NEET, CBSE, FAQ-admissions, FAQ-general).
+- **Evaluation framework** (`evaluations/`): STT WER/CER with self-contained Levenshtein,
+  TTS acronym counting and RTF, RAG recall/context-relevance/groundedness,
+  agent task-completion metrics; master CLI `python -m evaluations.run [--component stt|tts|rag|agent]`.
+- **Experiment tracking** (`experiments/`): structured experiment directory convention,
+  `experiments/run_all.py` orchestrator, `experiments_index.md` status table.
+  - Experiment 001 (Whisper model comparison): complete — `base` model selected
+  - Experiment 002 (TTS provider comparison): skeleton
+  - Experiment 003 (RAG chunk size): complete — **512-char chunks selected**
+- **Metrics dashboard** (`dashboard/`): Streamlit app with KPI strip, daily-conversation
+  bar chart, latency-by-component chart, language pie, recent-conversations viewer.
+  Auto-seeds 45 synthetic events in `logs/demo_events.jsonl` when no real log exists.
+- **Failure analysis** (`failures/`): structured failure log with 13 real failures
+  (F001–F013), parser-validated summary table, `get_stats()` for live counts.
+  Covers: STT, TTS, language detection, RAG, test infrastructure, build, prompts.
+- **Research documentation** (`docs/research/`): 5 papers documented with inspiration
+  vs citation distinction: IndicWhisper, streaming STT, voice agent architecture,
+  RAG for domain QA, code-switching.
+- **Demo scripts** (`demos/`): 8 standalone demos (English, Hindi, Hinglish,
+  tool calling, RAG, interruption, failure recovery, dashboard). All work without
+  API keys; real RAG pipeline in demo 5; cooperative cancellation in demo 6.
+- **Tests** (`tests/`): 465 tests total across 15 test files.
+  - `test_rag.py`: 38 tests
+  - `test_evaluations.py`: 56 tests
+  - `test_experiments.py`: 20 tests
+  - `test_dashboard_app.py`: 23 tests
+  - `test_failure_analysis.py`: 28 tests
+  - `test_research_docs.py`: 67 tests
+  - `test_demos.py`: 32 tests
+  - Plus: stt (16), tts (28), llm (30), orchestrator (16), agent (49), gateway (33), websocket_server (10), dashboard (19)
 
 ### Fixed
-- N/A
 
-### Security
-- .env.example provided for secure secret management
+- RAG `min_similarity_score=0.3` too strict for LocalEmbedder → lowered to 0.0
+- RAG `min_chunk_size=100` dropped short FAQ docs → lowered to 50
+- RAG vector store `> 0` filter dropped zero-similarity candidates → changed to `>= 0`
+- RAG retriever `async def` called without `await` in test → added `@pytest.mark.asyncio`
+- Evaluator percentile math wrong → corrected to linear interpolation (p50=450, p90=810)
+- TTS acronym regex too strict → simplified to `\b[A-Z]\b` for letter counting
+- Windows cp1252 encoding crash on emoji in `print()` → replaced with ASCII labels
+- PowerShell 5.1 `&&` chain operator not supported → use `;`
+- Experiment test asserted `status="skeleton"` after running → updated to `"complete"`
+- Stdout cp1252 crash on Hindi Devanagari in demos → `sys.stdout.reconfigure(encoding="utf-8")`
+
+### Changed
+
+- `src/rag/config.py`: `chunk_size` default 512, `chunk_overlap` default 50
+- `src/rag/vector_store.py`: similarity filter changed to `>= 0`
+- `src/stt/`: VAD module moved from `src/gateway/`
+- `tests/test_demos.py`: subprocess tests use `encoding="utf-8", errors="replace"`
+- `demos/_common.py`: `sys.stdout.reconfigure(encoding="utf-8")` on module load
 
 ---
 
-## Release Template
-
-### [X.Y.Z] - YYYY-MM-DD
+## [0.1.0] - 2026-09-07
 
 ### Added
-- New features
-
-### Changed
-- Changes in existing functionality
-
-### Deprecated
-- Soon-to-be removed features
-
-### Removed
-- Now removed features
-
-### Fixed
-- Bug fixes
+- Project structure with all directories (`src/`, `tests/`, `prompts/`, etc.)
+- `src/config.py`: Pydantic BaseSettings with environment variable loading
+- `src/logger.py`: structured logging (timestamp | name | level | message)
+- `src/main.py`: entry point
+- `src/stt/`: STT abstraction (Whisper provider, language hint support)
+- `src/tts/`: TTS abstraction (OpenAI streaming, TextNormalizer for Indian content)
+- `src/llm/`: LLM abstraction (Anthropic Claude Sonnet 4, versioned prompts)
+- `src/pipeline/`: orchestrator, types (AgentState, Session, ConversationMessage, PipelineMetrics), baseline test
+- `src/gateway/`: WebSocket server, energy-based VAD with hysteresis, audio utils
+- `dashboard/index.html` + `styles.css` + `app.js`: voice interaction frontend
+- `tests/`: 16 stt, 28 tts, 30 llm, 16 orchestrator, 33 gateway, 10 websocket_server, 19 dashboard = 152 tests
+- `flow.md`: decision log (sections 1–22)
+- `ARCHITECTURE.md`, `EVALUATION.md`: documentation
+- `.env.example`, `requirements.txt`: configuration
+- `failures/failure_analysis.md`: framework template (12 failure categories, severity levels)
+- `experiments/`: template for experiment tracking
 
 ### Security
-- Security improvements
+- `.env` not committed (`.gitignore` updated)
+- No API keys in source code
+- Structured logging without sensitive user content
