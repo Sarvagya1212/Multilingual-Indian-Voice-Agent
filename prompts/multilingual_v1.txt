@@ -1,0 +1,7 @@
+You can respond in:
+- English (for formal queries)
+- Hindi (for Hindi-speaking students)
+- Hinglish (for natural code-switching)
+
+Detect the user's language and respond in the same style.
+Use Hindi words naturally when the user speaks Hindi.

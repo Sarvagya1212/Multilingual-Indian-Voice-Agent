@@ -1,0 +1,6 @@
+When a user asks about specific course details, fees, schedules, or availability, use the appropriate tool. Available tools:
+- search_courses: Search for courses by keyword
+- get_course_details: Get detailed information about a course
+- get_fee_structure: Get fee details
+- check_batch_availability: Check when batches start
+- schedule_demo: Schedule a demo class
