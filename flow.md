@@ -829,4 +829,53 @@ class ConversationOrchestrator:
 
 ---
 
+### Prompt 3.1 - Agent State Machine (2026-09-07)
+
+**Actions Taken:**
+1. Created `src/agent/state_machine.py` with formal state machine and valid transition graph
+2. Created `src/agent/tools/base.py` with `Tool` ABC and `ToolResult` dataclass
+3. Created `src/agent/tools/course_tools.py` with 5 tools: search_courses, get_course_details, check_eligibility, get_fee_structure, schedule_demo (mock data)
+4. Created `src/agent/tools/tool_registry.py` with `ToolRegistry` and global singleton
+5. Created `src/agent/memory/short_term.py` with `ShortTermMemory` (sliding window, TTL, fact extraction)
+6. Created `src/agent/memory/long_term.py` with `LongTermMemory` stub (drop-in for Redis/SQLite)
+7. Created `src/agent/orchestrator.py` with `AgentOrchestrator` (state machine + tools + memory + pipeline)
+8. Created `src/agent/config.py` with `AgentConfig`
+9. Created `tests/test_agent.py` with 49 tests (state machine, memory, tools, registry)
+10. All 49 agent tests pass (201/201 total)
+
+**Architecture Decisions:**
+- **Formal state machine**: Valid transitions graph prevents invalid state jumps; all transitions logged
+- **GENERATING → INTERRUPTED**: Enables barge-in during TTS generation phase
+- **Two-pass tool calling**: LLM decides to call tools → execute → feed results back → final response
+- **Short-term memory**: Sliding window (max 10 turns), auto-extracts class/interest/language from messages
+- **Long-term memory**: Interface-only stub (production: swap for Redis/SQLite/Postgres)
+- **asyncio.wait_for**: Python 3.10 compatible timeout (no asyncio.timeout which is 3.11+)
+- **Default global registry**: `tool_registry` singleton; orchestrator accepts custom registry override
+- **fact extraction**: Simple keyword-based extraction (JEE/engineering, NEET/medical, CBSE/boards)
+
+**State Machine Transitions:**
+```
+IDLE → LISTENING → TRANSCRIBING → THINKING → CALLING_TOOL → GENERATING
+                                                           ↓
+SPEAKING ← GENERATING → INTERRUPTED → LISTENING ← ERROR
+```
+Interruptible: SPEAKING, GENERATING, CALLING_TOOL
+
+**Tools (5 total):**
+- `search_courses(query, limit)` — full-text search over mock catalogue (5 courses)
+- `get_course_details(course_id)` — syllabus, faculty, batches, timing
+- `check_eligibility(course_id, current_class, percentage)` — class prereq + guidance
+- `get_fee_structure(course_id)` — total fee, installments, scholarship bands
+- `schedule_demo(course_id, phone, date)` — generates demo_id, confirms within 24h
+
+**Test Results:**
+```
+49 passed in 0.21s (agent)
+201 passed in 5.43s (all tests)
+```
+
+**Status:** ✅ Complete (49/49 agent tests pass, 201/201 total)
+
+---
+
 Last updated: 2026-09-07
