@@ -6,13 +6,12 @@ Demonstrates the STT -> LLM -> TTS pipeline on a single turn.
 from __future__ import annotations
 
 from demos._common import (
-    SimulatedAgent,
     create_synthetic_wav,
-    has_api_key,
     header,
     info,
-    miss,
+    make_agent,
     ok,
+    print_mode_status,
     run,
     step,
 )
@@ -27,19 +26,10 @@ async def main() -> None:
     info(f"Generated {len(audio)} bytes of synthetic audio (1.0s sine wave).")
     print()
 
-    has_openai = has_api_key("OPENAI_API_KEY")
-    has_anthropic = has_api_key("ANTHROPIC_API_KEY")
-    if has_openai and has_anthropic:
-        info("API keys detected: will use the live pipeline.")
-    else:
-        miss("API keys missing: running with deterministic simulation.")
-        if not has_openai:
-            miss("Set OPENAI_API_KEY for live OpenAI TTS.")
-        if not has_anthropic:
-            miss("Set ANTHROPIC_API_KEY for live Claude LLM.")
+    print_mode_status()
     print()
 
-    agent = SimulatedAgent().create_session()
+    agent = make_agent(language="en").create_session() if hasattr(make_agent(language="en"), "create_session") else make_agent(language="en")
     info(f"Session: {agent.session_id}")
     print()
 

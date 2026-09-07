@@ -1,15 +1,23 @@
 """Shared helpers for the demo scripts.
 
-Demos must work without API keys so they're usable in CI and by
-portfolio reviewers. When a key is present, the demo will exercise
-the real provider; when missing, it falls back to deterministic stubs
-that simulate the same shape of response.
+Demos work in three modes, picked automatically:
+
+1. **Live** (preferred) — Ollama running locally for the LLM, gTTS for
+   speech. No API keys required, no payment. Detected when Ollama is
+   reachable on localhost:11434.
+2. **Paid** — OpenAI TTS + Anthropic Claude. Used when their API keys
+   are set in the environment.
+3. **Simulated** — deterministic scripted responses. Always available,
+   used as the final fallback so demos work everywhere.
+
+The status of each component is printed at the top of every demo.
 """
 from __future__ import annotations
 
 import asyncio
 import io
 import os
+import socket
 import sys
 import time
 import wave
@@ -68,8 +76,58 @@ def has_api_key(env_var: str) -> bool:
     return bool(val and val.strip())
 
 
+def ollama_reachable(host: str = "127.0.0.1", port: int = 11434) -> bool:
+    """True when an Ollama server is listening on the default port."""
+    try:
+        with socket.create_connection((host, port), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+
+def network_reachable(host: str = "8.8.8.8", port: int = 53, timeout: float = 1.0) -> bool:
+    """True when the host has general internet access (needed for gTTS)."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def print_mode_status() -> Dict[str, bool]:
+    """Print which mode the demos will run in. Returns the resolved flags."""
+    has_openai = has_api_key("OPENAI_API_KEY")
+    has_anthropic = has_api_key("ANTHROPIC_API_KEY")
+    ollama = ollama_reachable()
+    net = network_reachable()
+
+    if ollama and net:
+        ok("Free mode: Ollama LLM (local) + gTTS (Google) — no API keys needed")
+    elif ollama and not net:
+        warn("Ollama is running but no internet for gTTS; TTS will be simulated")
+    elif has_openai and has_anthropic:
+        ok("Paid mode: Anthropic Claude + OpenAI TTS — using your API keys")
+    else:
+        miss("Both Ollama and paid API keys unavailable; running deterministic simulation")
+        if not ollama:
+            miss("  - Ollama not running. Install from https://ollama.com and run 'ollama serve'")
+        if not net:
+            miss("  - No internet. gTTS cannot reach Google Translate.")
+        if not has_openai:
+            miss("  - Set OPENAI_API_KEY for live OpenAI TTS")
+        if not has_anthropic:
+            miss("  - Set ANTHROPIC_API_KEY for live Claude LLM")
+
+    return {
+        "ollama": ollama,
+        "network": net,
+        "openai": has_openai,
+        "anthropic": has_anthropic,
+    }
+
+
 # ----------------------------------------------------------------------
-# Synthetic audio
+# Synthetic audio (used by simulation mode)
 # ----------------------------------------------------------------------
 
 
@@ -175,6 +233,22 @@ class SimulatedAgent:
             state=self.state,
         )
         self.history.append(result)
+
+        try:
+            from src.telemetry import write_turn_event
+            write_turn_event(
+                session_id=self.session_id,
+                language=language,
+                transcript=transcript,
+                response=response,
+                stt_latency_ms=0.0,
+                llm_latency_ms=50.0,
+                tts_latency_ms=20.0,
+                total_latency_ms=elapsed_ms,
+            )
+        except ImportError:
+            pass
+
         return result
 
     def interrupt(self) -> bool:
@@ -182,6 +256,128 @@ class SimulatedAgent:
             self.state = "INTERRUPTED"
             return True
         return False
+
+
+# ----------------------------------------------------------------------
+# Live agent (Ollama + gTTS when available)
+# ----------------------------------------------------------------------
+
+
+@dataclass
+class LiveTurnResult:
+    """Result from a live Ollama + gTTS turn."""
+
+    transcript: str
+    response_text: str
+    detected_language: str
+    audio: bytes
+    duration: float
+    latency_ms: float
+    tool_calls: List[Dict[str, Any]] = field(default_factory=list)
+    state: str = "IDLE"
+    model: str = ""
+    grounded: bool = True
+    notes: List[str] = field(default_factory=list)
+
+
+class LiveAgent:
+    """Real agent backed by Ollama (LLM) and gTTS (TTS).
+
+    Used when both Ollama is running and the network is reachable.
+    Falls back to a clear exception if a component is unavailable.
+    """
+
+    def __init__(self, model: str = "llama3.1:latest", language: str = "en") -> None:
+        self.model = model
+        self.language = language
+        self.state = "IDLE"
+        self.turns = 0
+        self.session_id = f"live-{int(time.time() * 1000)}"
+
+        from src.llm.providers import OllamaLLMProvider
+        from src.llm.base import Message, MessageRole
+        from src.tts.providers import GttsTTSProvider
+        from src.tts.normalizer import normalizer
+
+        self.llm = OllamaLLMProvider(model=model)
+        self.tts = GttsTTSProvider(language=language)
+        self.normalizer = normalizer
+        self._Message = Message
+        self._MessageRole = MessageRole
+        self._system_prompt = (
+            "You are a friendly Indian education counsellor. Be concise — "
+            "respond in 1-2 short sentences. Match the user's language."
+        )
+
+    async def process_turn(self, transcript: str, language: Optional[str] = None) -> LiveTurnResult:
+        """Run one full turn: LLM call + gTTS synthesis."""
+        self.turns += 1
+        lang = language or self.language
+        start = time.perf_counter()
+
+        # 1. LLM
+        self.state = "THINKING"
+        llm_start = time.perf_counter()
+        messages = [
+            self._Message(role=self._MessageRole.SYSTEM, content=self._system_prompt),
+            self._Message(role=self._MessageRole.USER, content=transcript),
+        ]
+        llm_resp = await self.llm.chat(messages=messages, max_tokens=128)
+        llm_latency = (time.perf_counter() - llm_start) * 1000
+        response_text = llm_resp.content.strip()
+
+        # 2. TTS
+        self.state = "GENERATING"
+        tts_start = time.perf_counter()
+        tts_result = await self.tts.synthesize(response_text, language=lang)
+        tts_latency = (time.perf_counter() - tts_start) * 1000
+        self.state = "SPEAKING"
+        self.state = "IDLE"
+
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        try:
+            from src.telemetry import write_turn_event
+            write_turn_event(
+                session_id=self.session_id,
+                language=lang,
+                transcript=transcript,
+                response=response_text,
+                stt_latency_ms=0.0,
+                llm_latency_ms=llm_latency,
+                tts_latency_ms=tts_latency,
+                total_latency_ms=elapsed_ms,
+            )
+        except ImportError:
+            pass
+
+        return LiveTurnResult(
+            transcript=transcript,
+            response_text=response_text,
+            detected_language=lang,
+            audio=tts_result.audio,
+            duration=tts_result.duration,
+            latency_ms=elapsed_ms,
+            state=self.state,
+            model=self.model,
+        )
+
+    def interrupt(self) -> bool:
+        if self.state in ("SPEAKING", "GENERATING"):
+            self.state = "INTERRUPTED"
+            return True
+        return False
+
+
+def make_agent(model: str = "llama3.1:latest", language: str = "en"):
+    """Return a `LiveAgent` if Ollama + network are available, else a `SimulatedAgent`."""
+    if ollama_reachable() and network_reachable():
+        try:
+            return LiveAgent(model=model, language=language)
+        except Exception as e:  # pragma: no cover — defensive
+            warn(f"Live agent failed to initialize ({e}); using simulation")
+            return SimulatedAgent()
+    return SimulatedAgent()
 
 
 # ----------------------------------------------------------------------
