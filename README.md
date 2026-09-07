@@ -47,7 +47,7 @@ graph TD
 - **RAG**: 512-char chunks, lexical re-ranker, 5 education domain documents
 - **Agent**: State machine with 9 states; 5 tools (search, details, eligibility, fee, demo)
 - **Text normalization**: ₹, JEE/NEET/IIT abbreviations, Indian numbering, times
-- **Evaluation**: 465 tests covering all components
+- **Evaluation**: 520 tests covering all components
 - **Experiment tracking**: 3 experiments (001 complete, 002 skeleton, 003 complete)
 - **Failure analysis**: 13 real failures documented with root cause and fix
 
@@ -96,7 +96,7 @@ python demos/demo_08_dashboard.py       # dashboard data layer
 | Language detection accuracy | > 90% | **100%** (5 labelled samples) |
 | Tool call schema validation | > 95% | ✅ (5/5 tools validated) |
 | Experiment system | - | ✅ (3 experiments scaffolded) |
-| Test suite | - | **465 tests passing** |
+| Test suite | - | **520 tests passing** |
 | Failure log | - | **13 failures documented** |
 
 *Run `python -m evaluations.run` for live metrics. End-to-end STT/TTS WER requires labelled audio data.*
@@ -127,7 +127,7 @@ Multilingual-Indian-Voice-Agent/
 ├── failures/              # Failure analysis framework + 13 documented failures
 ├── dashboard/             # Streamlit metrics dashboard
 ├── demos/                 # 8 executable demo scripts
-├── tests/                 # 15 test files, 465 tests
+├── tests/                 # 15 test files, 520 tests
 ├── docs/research/         # 5 research papers documented
 └── prompts/               # PROMPTS.md
 ```

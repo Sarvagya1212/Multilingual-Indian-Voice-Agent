@@ -27,7 +27,7 @@ Completed on: 2026-09-07
 - [x] **Experiment tracking works** — `python experiments/run_all.py`; 3 experiments scaffolded; 003 complete
 - [x] **Failure analysis works** — 13 real failures documented; parser-validated stats; 28 tests
 - [x] **Research docs exist** — 5 papers documented; 67 tests
-- [x] **Tests pass** — 465/465 tests passing
+- [x] **Tests pass** — 520/520 tests passing (501 + 19 telemetry)
 
 ### Demos & Dashboard
 - [x] **8 demo scripts exist and run** — all pass; work without API keys; 32 demo tests
@@ -42,7 +42,7 @@ Completed on: 2026-09-07
 ### Dashboard
 - [x] **Dashboard data layer works** — JSONL loader, demo data seeder, aggregator; 23 tests
 - [x] **Dashboard app runs** — `streamlit run dashboard/app.py`; sidebar-configurable log path
-- [ ] **Metrics are recorded** — dashboard reads from `logs/events.jsonl`; pipeline must emit `turn_complete` events for live data; synthetic demo data populates `logs/demo_events.jsonl` on first run
+- [x] **Metrics are recorded** — `src/telemetry.py` (TelemetryWriter) appends `turn_complete` events to `logs/events.jsonl` on every completed turn; enabled via `TELEMETRY_ENABLED=true`; write failures are caught and never crash the pipeline; 19 telemetry tests pass
 
 ---
 
