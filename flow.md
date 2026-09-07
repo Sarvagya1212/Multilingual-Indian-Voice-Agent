@@ -784,4 +784,49 @@ class ConversationOrchestrator:
 
 ---
 
+### Prompt 2.2 - Frontend Web Interface (2026-09-07)
+
+**Actions Taken:**
+1. Created `dashboard/index.html` with status panel, conversation log, mic button, level meter, metrics panel
+2. Created `dashboard/styles.css` with responsive dark theme, CSS variables, recording animation
+3. Created `dashboard/app.js` with `VoiceAgent` class — Web Audio API mic capture (raw PCM 16kHz), WebSocket client, level meter visualizer
+4. Created `tests/test_dashboard.py` with 19 tests (HTML/CSS/JS structure validation)
+5. All 19 dashboard tests pass (152/152 total)
+
+**Architecture Decisions:**
+- **Raw PCM streaming**: ScriptProcessor captures float32 audio, converts to int16, sends as binary over WebSocket (avoids MediaRecorder's webm encoding complexity)
+- **High-DPI canvas**: `devicePixelRatio` scaling for sharp level meter
+- **Touch + mouse**: Both `mousedown`/`mouseup` and `touchstart`/`touchend` on the mic button (press-to-talk pattern)
+- **Auto-reconnect**: WebSocket re-establishes after 3 seconds on disconnect
+- **No build step**: Pure HTML/CSS/JS — no React, no bundlers; serve directly from the gateway
+- **Accessibility**: `aria-label`, `aria-live`, semantic HTML elements, focusable button
+- **System messages**: Distinct `.system` class for pipeline feedback ("Processing response...", "Speech detected...")
+- **Theming via CSS vars**: Easy to swap palette by overriding `:root` variables
+
+**WebSocket Protocol Handled:**
+- `status` — state update
+- `speech_start` / `speech_end` — VAD events
+- `turn_started` / `turn_complete` — pipeline lifecycle
+- `error` — error display
+- `pong` — heartbeat
+
+**UI Components:**
+- Status panel: connection state, agent state, language, session ID
+- Conversation log: bubbles for user (right, primary) vs agent (left, surface)
+- Mic button: large press-to-talk with recording animation
+- Interrupt button: enabled when speaking
+- Level meter: real-time audio level via Web Audio AnalyserNode
+- Metrics panel: collapsible, shows STT/LLM/TTS/total latencies
+- Footer: link to GitHub repo
+
+**Test Results:**
+```
+19 passed in 0.05s (dashboard)
+152 passed in 5.21s (all tests)
+```
+
+**Status:** ✅ Complete (19/19 dashboard tests pass, 152/152 total)
+
+---
+
 Last updated: 2026-09-07

@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Indian Education Counsellor — Voice Agent</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Indian Education Counsellor</h1>
+            <p class="subtitle">Multilingual voice agent (English, Hindi, Hinglish)</p>
+        </header>
+
+        <div class="status-panel" aria-live="polite">
+            <div class="status-item">
+                <span class="label">Status</span>
+                <span id="status" class="value">Disconnected</span>
+            </div>
+            <div class="status-item">
+                <span class="label">State</span>
+                <span id="state" class="value">idle</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Language</span>
+                <span id="language" class="value">-</span>
+            </div>
+            <div class="status-item">
+                <span class="label">Session</span>
+                <span id="session" class="value">-</span>
+            </div>
+        </div>
+
+        <div class="conversation-panel" id="conversation">
+            <div id="messages" class="messages" aria-live="polite"></div>
+        </div>
+
+        <div class="controls">
+            <button id="mic-btn" class="mic-btn" type="button" aria-label="Hold to speak">
+                <span class="icon" aria-hidden="true">MIC</span>
+                <span class="label">Hold to Speak</span>
+            </button>
+            <button id="interrupt-btn" class="interrupt-btn" type="button" disabled>
+                Interrupt
+            </button>
+        </div>
+
+        <div class="visualizer">
+            <canvas id="level-meter" width="600" height="60" aria-label="Audio level"></canvas>
+        </div>
+
+        <details class="metrics-panel">
+            <summary>Pipeline Metrics</summary>
+            <div class="metric-grid">
+                <div class="metric">
+                    <span>STT Latency</span>
+                    <span id="stt-latency">-</span>
+                </div>
+                <div class="metric">
+                    <span>LLM Latency</span>
+                    <span id="llm-latency">-</span>
+                </div>
+                <div class="metric">
+                    <span>TTS Latency</span>
+                    <span id="tts-latency">-</span>
+                </div>
+                <div class="metric">
+                    <span>Total</span>
+                    <span id="total-latency">-</span>
+                </div>
+                <div class="metric">
+                    <span>Tool Calls</span>
+                    <span id="tool-calls">0</span>
+                </div>
+                <div class="metric">
+                    <span>Turns</span>
+                    <span id="turns">0</span>
+                </div>
+            </div>
+        </details>
+
+        <footer>
+            <p>
+                <a href="https://github.com/Sarvagya1212/Multilingual-Indian-Voice-Agent" target="_blank" rel="noopener">Source</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
