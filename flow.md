@@ -592,4 +592,74 @@ Substitutions: [CURRENCY: 1x, COURSE: 1x]
 
 ---
 
+### Prompt 1.4 - LLM Integration (2026-09-07)
+
+**Actions Taken:**
+1. Created `src/llm/base.py` with `LLMProvider` ABC, `Message`, `LLMResponse`, `ToolCall`
+2. Created `src/llm/config.py` with `LLMConfig` and prompt loading utilities
+3. Created `src/llm/providers.py` with `AnthropicLLMProvider` (Claude Sonnet 4)
+4. Created `src/llm/__init__.py` with public API exports
+5. Created `tests/test_llm.py` with 30 unit tests
+6. All 30 LLM tests pass (74/74 total)
+
+**Architecture Decisions:**
+- **Provider-agnostic interface**: `LLMProvider` ABC with `chat()`, `chat_stream()`, `detect_language()`
+- **Anthropic Claude Sonnet 4**: Best-in-class tool use, strong reasoning, multilingual
+- **Versioned prompts**: Modular files (system_v1, tool_use_v1, multilingual_v1) for A/B testing
+- **OpenAI tool format**: Accept tools in OpenAI format, convert to Anthropic internally
+- **Lazy client init**: AsyncAnthropic client loaded on first use
+- **Message format conversion**: System + user/assistant/tool_result → Anthropic format
+- **Language detection**: Character-based heuristic (Devanagari ratio)
+  - >50% Devanagari = Hindi
+  - 15-50% Devanagari = Hinglish
+  - <15% = English (or Roman transliteration)
+
+**Prompt Architecture:**
+- `prompts/system_v1.txt` - Education counsellor persona
+- `prompts/tool_use_v1.txt` - Tool calling instructions
+- `prompts/multilingual_v1.txt` - Multilingual response guidelines
+- `build_system_prompt()` combines all three
+
+**Provider Interface:**
+```python
+class LLMProvider(ABC):
+    async def chat(messages, tools, temperature, max_tokens) -> LLMResponse
+    async def chat_stream(messages, tools, temperature, max_tokens) -> AsyncGenerator[str]
+    async def detect_language(text) -> str
+    @property latency_ms -> float
+    @property name -> str
+```
+
+**Message Format:**
+```python
+@dataclass
+class Message:
+    role: MessageRole  # SYSTEM, USER, ASSISTANT, TOOL_RESULT
+    content: str
+    name: Optional[str]
+    tool_call_id: Optional[str]  # For TOOL_RESULT
+
+@dataclass
+class LLMResponse:
+    content: str
+    tool_calls: List[ToolCall]
+    finish_reason: str
+    usage: Dict[str, int]  # input_tokens, output_tokens
+```
+
+**Tool Format Conversion:**
+- Input: OpenAI format (`{type: "function", function: {name, description, parameters}}`)
+- Output: Anthropic format (`{name, description, input_schema}`)
+- Pass-through for native Anthropic format
+
+**Test Results:**
+```
+30 passed in 0.21s (LLM)
+74 passed in 5.56s (all tests: 16 STT + 28 TTS + 30 LLM)
+```
+
+**Status:** ✅ Complete (30/30 LLM tests pass, 74/74 total)
+
+---
+
 Last updated: 2026-09-07
