@@ -66,7 +66,12 @@ python demos/run_all.py
 # 4. Run the evaluation suite
 python -m evaluations.run
 
-# 5. Launch the dashboard
+# 5. (Optional) Enable live telemetry so the dashboard shows real data
+set TELEMETRY_ENABLED=true            # Windows PowerShell
+# export TELEMETRY_ENABLED=true       # macOS / Linux
+python -m src.main                    # or any demo; turns appended to logs/events.jsonl
+
+# 6. Launch the dashboard
 streamlit run dashboard/app.py
 ```
 
