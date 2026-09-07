@@ -11,6 +11,7 @@ Levenshtein>=0.24.0
 
 # Audio Processing
 sounddevice>=0.4.6
+openai-whisper>=20250625  # For STT (Whisper models)
 
 # Vector Database
 chromadb>=0.4.15

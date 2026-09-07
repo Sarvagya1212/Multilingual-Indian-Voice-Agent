@@ -489,4 +489,51 @@ graph TD
 
 ---
 
+### Prompt 1.2 - STT Abstraction Layer (2026-09-07)
+
+**Actions Taken:**
+1. Created `src/stt/base.py` with `STTProvider` ABC and `STTResult` dataclass
+2. Created `src/stt/config.py` with `STTConfig` Pydantic model and language code mappings
+3. Created `src/stt/providers.py` with `WhisperSTTProvider` implementation
+4. Created `src/stt/__init__.py` with public API exports
+5. Created `tests/test_stt.py` with 16 unit tests
+6. Installed `openai-whisper` package
+7. All 16 tests pass
+
+**Architecture Decisions:**
+- **Provider-agnostic interface**: `STTProvider` ABC defines 3 abstract methods: `transcribe()`, `transcribe_stream()`, `detect_language()`
+- **Lazy model loading**: Whisper model loads on first use, not at init (avoids startup delay)
+- **WAV + raw PCM support**: `_bytes_to_audio()` handles both RIFF/WAV header and raw int16 PCM
+- **Auto resampling**: Linear interpolation when source sample rate != 16kHz
+- **Language normalization**: Maps Whisper codes to our standard (`en`, `hi`, `hinglish`)
+- **Singleton registry**: `get_stt_provider()` factory function with name-based lookup
+
+**Test Results:**
+```
+16 passed, 7 warnings in 23.17s
+```
+
+**Key Features Implemented:**
+- Async `transcribe()` with language hint support
+- Streaming `transcribe_stream()` via async generator
+- `detect_language()` with confidence via Whisper's built-in detector
+- Latency tracking (`latency_ms` property)
+- Confidence calculation from segment-level logprobs
+- Empty audio handling
+- Provider registry pattern for easy extension
+
+**Provider Interface:**
+```python
+class STTProvider(ABC):
+    async def transcribe(audio: bytes, language: Optional[str]) -> STTResult
+    async def transcribe_stream(audio_stream, language) -> AsyncGenerator[str]
+    async def detect_language(audio: bytes) -> str
+    @property latency_ms -> float
+    @property name -> str
+```
+
+**Status:** ✅ Complete (16/16 tests pass)
+
+---
+
 Last updated: 2026-09-07
