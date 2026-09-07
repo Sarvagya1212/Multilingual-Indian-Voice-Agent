@@ -878,4 +878,47 @@ Interruptible: SPEAKING, GENERATING, CALLING_TOOL
 
 ---
 
+## 21. RAG Pipeline (Prompt 4.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Architecture
+```
+docs → TextChunker → Embedder → VectorStore
+                                   ↓
+query → embed_query → cosine search → Reranker → top-k → context string
+```
+
+### Files
+- `src/rag/chunker.py` — sentence-aware chunker with overlap (chunk_size=512, overlap=50)
+- `src/rag/embedder.py` — abstract Embedder + LocalEmbedder (hash-based fallback) + OpenAIEmbedder (real)
+- `src/rag/vector_store.py` — in-memory VectorStore with cosine similarity
+- `src/rag/reranker.py` — lexical re-ranker (keyword overlap + length score)
+- `src/rag/retriever.py` — orchestrator: index → retrieve → filter → rerank
+- `src/rag/knowledge_base.py` — high-level API with 5 source documents (JEE, NEET, CBSE, FAQ-admissions, FAQ-general)
+- `src/rag/config.py` — RAGConfig (chunk params, top_k, min_similarity_score)
+- `src/rag/__init__.py` — public API exports
+- `tests/test_rag.py` — 38 tests
+
+### Decisions
+- **LocalEmbedder as default**: hash-based word vectors, deterministic, zero-cost, suitable for tests and offline demo. OpenAI used when `OPENAI_API_KEY` is set.
+- **Cosine similarity**: standard for dense retrieval; L2-normalized vectors for efficiency
+- **min_similarity_score=0.0**: re-ranker handles quality; with low-quality hash embeddings, no chunk should be filtered out at retrieval time
+- **min_chunk_size=50**: 100 was too aggressive — short documents would have zero chunks
+- **Sentence-aware chunking**: preserves semantic coherence vs naive character splits; respects abbreviations (Dr., Mr., etc.)
+- **Re-ranker weights**: 60% base similarity + 30% keyword overlap + 10% length — keyword overlap strongly boosts true matches when the embedder is weak
+- **In-memory vector store**: simple, fast for demos; ChromaDB or FAISS would be the production swap-in (interface-compatible)
+- **Filter pipeline**: metadata filtering applied at retrieval time, then re-ranking, then `final_k` truncation
+
+### Test Results
+```
+38 passed in 0.36s (RAG only)
+239 passed in 5.53s (all tests)
+```
+
+**Status:** ✅ Complete (38/38 RAG tests pass, 239/239 total)
+
+---
+
 Last updated: 2026-09-07
