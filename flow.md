@@ -1134,4 +1134,54 @@ experiments/<NNN_name>/
 
 ---
 
+## 27. Demo Scripts (Prompt 11.1)
+
+**Date:** 2026-09-07
+**Status:** ✅ Complete
+
+### Files
+- `demos/README.md` — run instructions, demo descriptions, architecture table
+- `demos/run_all.py` — orchestrator: `python demos/run_all.py [indices] [--stop]`
+- `demos/_common.py` — shared helpers: `create_synthetic_wav()`, `has_api_key()`, `scripted_response()`, `SimulatedAgent`, `run()`
+- `demos/demo_01_english.py` — single-turn English conversation
+- `demos/demo_02_hindi.py` — Devanagari Hindi conversation
+- `demos/demo_03_hinglish.py` — code-switching (Roman + Devanagari)
+- `demos/demo_04_tool_calling.py` — search / eligibility / fee / schedule_demo tools
+- `demos/demo_05_rag.py` — real RAG pipeline (no API key needed)
+- `demos/demo_06_interruption.py` — cooperative cancellation for barge-in
+- `demos/demo_07_failure_recovery.py` — STT/timeout/tool error → ERROR → IDLE
+- `demos/demo_08_dashboard.py` — dashboard data-layer smoke test
+- `tests/test_demos.py` — 32 tests
+
+### Decisions
+- **Zero-dependency demos**: no API keys needed for demos 1-3, 5-8. Demo 4 tool calls work via heuristic without an LLM.
+- **Synthetic WAV for audio**: `create_synthetic_wav()` from baseline.py reused so demos can run without a microphone.
+- **UTF-8 stdout fix in `_common.py`**: `sys.stdout.reconfigure(encoding="utf-8")` on module load so Hindi Devanagari output doesn't crash the Windows cp1252 console.
+- **Demo 5 uses the real RAG pipeline**: LocalEmbedder is hash-based; no API key needed. `KnowledgeBase.build()` + `query_rag()` demonstrate the real code path.
+- **Demo 6 uses cooperative cancellation**: `asyncio.CancelledError` propagates through `process_turn()` so the interrupt signal actually halts the SPEAKING phase.
+- **Demo 8 exercises the dashboard data layer**: not `streamlit run`; the data-layer is tested directly so it runs in CI.
+- **Subprocess tests use `encoding="utf-8", errors="replace"`**: prevents the cp1252 reader thread from crashing on Devanagari in stdout.
+
+### Demo Summary
+| # | Demo | API Keys | Notes |
+|---|------|----------|-------|
+| 1 | English | None | Deterministic simulation |
+| 2 | Hindi | None | Devanagari output |
+| 3 | Hinglish | None | Code-switching |
+| 4 | Tool Calling | Optional | Heuristic picks tools |
+| 5 | RAG | None | Real RAG pipeline |
+| 6 | Interruption | None | Cooperative cancellation |
+| 7 | Failure Recovery | None | ERROR → IDLE |
+| 8 | Dashboard | None | Data layer smoke test |
+
+### Test Results
+```
+32 passed in 8.74s (demos)
+465 passed in 15.27s (all tests)
+```
+
+**Status:** ✅ Complete (32/32 demo tests pass, 465/465 total)
+
+---
+
 Last updated: 2026-09-07
