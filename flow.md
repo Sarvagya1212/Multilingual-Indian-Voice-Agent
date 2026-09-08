@@ -1221,4 +1221,81 @@ Ready for portfolio review or production hardening.
 
 ---
 
-Last updated: 2026-09-07
+## 29. Live Voice Agent Entry Point (Prompt 13.1)
+
+**Date:** 2026-09-08
+**Status:** ✅ Complete
+
+### Files
+- `run_live.py` — top-level script linking `ConversationOrchestrator` to `VoiceGateway` and hosting the `dashboard` UI
+- `dashboard/app.js` — fixes for WebSocket recording controls
+
+### Decisions
+- **Unified Launch**: Provides a single `run_live.py` to start the frontend HTTP server alongside the WebSocket server, connecting the pieces that were previously mostly exercised through deterministic demo scripts.
+- **Frontend Control Messages**: Updated JS client to properly send `"type": "start"` and `"type": "stop"` to trigger pipeline processing correctly, shifting from passive VAD-only detection to direct user intent via the microphone button.
+
+---
+
+## 29. Live Voice Agent Entry Point
+
+**Date:** 2026-09-08
+**Status:** ✅ Complete
+
+### Problem
+
+The project had all the backend pieces (STT, LLM, TTS, orchestrator, WebSocket
+gateway, frontend) built but lacked a single script to connect them together
+for a live voice conversation. `src/main.py` only printed config info and
+exited. The frontend `app.js` had three critical bugs preventing audio from
+ever reaching the pipeline.
+
+### Solution: `run_live.py`
+
+A single entry point at the project root that:
+
+1. **Checks prerequisites** — Ollama reachable? Internet for gTTS? Whisper
+   installed? API keys present?
+2. **Creates a `ConversationOrchestrator`** with the configured providers
+3. **Starts the `VoiceGateway`** WebSocket server on port 8765
+4. **Starts an `aiohttp` HTTP server** on port 8080 to serve
+   `dashboard/index.html`, `styles.css`, `app.js`
+5. **Enables telemetry** (`TELEMETRY_ENABLED=true`) automatically
+6. **Prints clear instructions** and opens the browser
+
+### Frontend Bugs Fixed (`dashboard/app.js`)
+
+| Bug | Root Cause | Fix |
+|-----|-----------|-----|
+| No audio flowing | `ScriptProcessor` not connected to `MediaStreamSource` | Connect `source → scriptNode → destination` |
+| Pipeline never triggered | No `{"type": "stop"}` message sent | Send `start`/`stop` JSON control messages on mousedown/mouseup |
+| Audio sent as single blob | All PCM buffered then concatenated on mouseup | Stream each chunk as a binary frame in real-time |
+| Wrong WebSocket port | `window.location.port` was 8080 (HTTP server) | Hardcode WS gateway port 8765 |
+| AudioContext suspended | Browser autoplay policy blocked audio | Call `audioContext.resume()` on first interaction |
+
+### Decisions
+
+- **Self-contained prerequisite checks**: `run_live.py` does not depend on
+  `demos/_common.py` so it works standalone and can be the first thing a
+  reviewer runs.
+- **`aiohttp` for static files**: already in `requirements.txt`; avoids adding
+  another dependency. No framework needed for 3 static files.
+- **Ports configurable via env**: `HTTP_PORT` and `WS_PORT` environment
+  variables allow running on custom ports.
+- **Browser auto-open**: `webbrowser.open()` called after startup so the
+  reviewer sees the UI immediately.
+
+### Files Changed
+
+| Action | File |
+|--------|------|
+| MODIFY | `run_live.py` — rewrote with prerequisite checks and self-contained logic |
+| MODIFY | `dashboard/app.js` — fixed 5 frontend bugs |
+| MODIFY | `README.md` — "Talk to the Agent (Live)" section in Quick Start |
+| MODIFY | `CHANGELOG.md` — [0.3.0] entry |
+| MODIFY | `ARCHITECTURE.md` — "Live Usage" section |
+| MODIFY | `flow.md` — this section (29) |
+| MODIFY | `demos/README.md` — note about `run_live.py` |
+
+---
+
+Last updated: 2026-09-08

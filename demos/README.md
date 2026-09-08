@@ -5,6 +5,11 @@ features. Each demo is a standalone script that runs without API keys
 (using deterministic stubs for STT/LLM/TTS) so it works out-of-the-box
 in CI and for portfolio reviewers.
 
+> **Want the real, live voice experience?** Run `python run_live.py` from the
+> project root. It starts the full pipeline (STT → LLM → TTS) with a browser
+> UI where you press-and-hold the mic to talk. See the main
+> [README](../README.md) for details.
+
 ## Running Demos
 
 ```bash

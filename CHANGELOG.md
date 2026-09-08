@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.3.0] - 2026-09-08
+
+### Added
+
+- **Live launch script** (`run_live.py`): single entry point that wires
+  `ConversationOrchestrator` to `VoiceGateway` WebSocket server and serves the
+  dashboard frontend over HTTP. Includes prerequisite checks (Ollama, internet,
+  Whisper, API keys), auto-enables telemetry, and opens the browser.
+  - HTTP server on `http://localhost:8080` — serves `dashboard/index.html`
+  - WebSocket server on `ws://localhost:8765` — real-time audio streaming
+  - Ports configurable via `HTTP_PORT` and `WS_PORT` environment variables
+
+### Fixed
+
+- **Frontend audio never reached the gateway** (`dashboard/app.js`):
+  - `ScriptProcessor` was not connected to the `MediaStreamSource` — no audio flowed
+  - No `{"type": "start"}` / `{"type": "stop"}` control messages were sent, so
+    `_process_turn()` on the gateway was never triggered
+  - Audio was buffered and sent as a single blob on mouseup instead of streamed
+    in real-time as PCM binary frames
+  - WebSocket URL used `window.location.port` (8080 when served by HTTP server)
+    instead of the gateway port (8765)
+- Added `AudioContext.resume()` call to handle browser autoplay policy
+
+### Changed
+
+- `README.md`: "Talk to the Agent (Live)" section added to Quick Start
+- `ARCHITECTURE.md`: added "Live Usage" section explaining how `run_live.py` wires components
+- `flow.md`: added section "29. Live Voice Agent Entry Point"
+- `demos/README.md`: added note pointing to `run_live.py` for live experience
+
+---
+
 ## [0.2.0] - 2026-09-07
 
 ### Added

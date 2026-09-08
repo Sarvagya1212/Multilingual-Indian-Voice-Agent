@@ -90,8 +90,11 @@ class VoiceAgent {
     initWebSocket() {
         const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
         const host = window.location.hostname || 'localhost';
-        const port = window.location.port || '8765';
-        const url = `${protocol}//${host}:${port}`;
+        // Always connect to the WebSocket gateway port (8765), not the HTTP
+        // server port.  The gateway runs on a separate port from the static
+        // file server.
+        const wsPort = '8765';
+        const url = `${protocol}//${host}:${wsPort}`;
 
         this.ws = new WebSocket(url);
         this.setStatus('Connecting...');
@@ -184,9 +187,16 @@ class VoiceAgent {
         try {
             await this.initMicrophone();
 
-            // Use ScriptProcessor to capture raw PCM
+            // Resume AudioContext if it was suspended (browser autoplay policy)
+            if (this.audioContext.state === 'suspended') {
+                await this.audioContext.resume();
+            }
+
+            // Tell the gateway we are starting a new utterance
+            this.ws.send(JSON.stringify({ type: 'start' }));
+
+            // Create a ScriptProcessor to capture raw PCM and stream it
             const scriptNode = this.audioContext.createScriptProcessor(4096, 1, 1);
-            this.audioBuffer = [];
 
             scriptNode.onaudioprocess = (e) => {
                 if (!this.isRecording) return;
@@ -197,11 +207,19 @@ class VoiceAgent {
                     const s = Math.max(-1, Math.min(1, inputData[i]));
                     pcm[i] = s < 0 ? s * 32768 : s * 32767;
                 }
-                this.audioBuffer.push(new Uint8Array(pcm.buffer));
+                // Stream each chunk immediately as a binary WebSocket frame
+                if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+                    this.ws.send(pcm.buffer);
+                }
             };
 
+            // Connect: mic source -> scriptNode -> destination so audio flows
+            const source = this.audioContext.createMediaStreamSource(this.mediaStream);
+            source.connect(scriptNode);
+            scriptNode.connect(this.audioContext.destination);
+
             this.scriptNode = scriptNode;
-            this.audioBuffer = [];
+            this._micSource = source;
             this.isRecording = true;
             this.micBtn.classList.add('recording');
             this.interruptBtn.disabled = false;
@@ -221,23 +239,20 @@ class VoiceAgent {
         this.micBtn.classList.remove('recording');
         this.setStatus('Processing...', 'processing');
 
-        // Disconnect script processor
+        // Disconnect script processor and mic source
+        if (this._micSource) {
+            this._micSource.disconnect();
+            this._micSource = null;
+        }
         if (this.scriptNode) {
             this.scriptNode.disconnect();
             this.scriptNode = null;
         }
 
-        if (this.audioBuffer && this.audioBuffer.length > 0 && this.ws) {
-            // Concatenate all PCM chunks
-            const total = this.audioBuffer.reduce((a, b) => a + b.length, 0);
-            const combined = new Uint8Array(total);
-            let offset = 0;
-            for (const chunk of this.audioBuffer) {
-                combined.set(chunk, offset);
-                offset += chunk.length;
-            }
-            this.ws.send(combined);
-            this.audioBuffer = null;
+        // Send a stop control message to trigger pipeline processing on the
+        // gateway.  Audio chunks have already been streamed in real-time.
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.ws.send(JSON.stringify({ type: 'stop' }));
         }
     }
 

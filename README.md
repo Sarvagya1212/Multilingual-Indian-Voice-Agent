@@ -54,30 +54,47 @@ graph TD
 
 ## Quick Start
 
+### Talk to the Agent (Live)
+
+The fastest way to experience the voice agent is the live mode — open a browser, press‑and‑hold the mic button, and talk:
+
 ```bash
-# 1. Install
+# 1. Install dependencies
 pip install -r requirements.txt
 
-# 2. (Free defaults) Start Ollama and pull a model
+# 2. Start Ollama (free, local LLM)
 ollama serve              # runs in background
 ollama pull llama3.1      # one-time, ~5 GB
 
-# 2b. (Optional) For paid providers instead
+# 3. Launch the live voice agent
+python run_live.py
+```
+
+This starts:
+- **HTTP server** on `http://localhost:8080` — the voice agent UI
+- **WebSocket server** on `ws://localhost:8765` — real-time audio streaming
+
+Open [http://localhost:8080](http://localhost:8080) in your browser, press-and-hold the **MIC** button, and speak. The agent will transcribe your speech, generate a response via the LLM, and speak it back to you.
+
+### Demos & Evaluation
+
+```bash
+# Run all 8 demos (no API keys needed)
+python demos/run_all.py
+
+# Run the evaluation suite
+python -m evaluations.run
+
+# (Optional) For paid providers instead of Ollama + gTTS
 # cp .env.example .env  # add OPENAI_API_KEY and ANTHROPIC_API_KEY
 # Then override in src/config.py:  llm_provider = "anthropic",  tts_provider = "openai"
 
-# 3. Run demos (no keys needed for most demos)
-python demos/run_all.py
-
-# 4. Run the evaluation suite
-python -m evaluations.run
-
-# 5. (Optional) Enable live telemetry so the dashboard shows real data
+# (Optional) Enable live telemetry so the dashboard shows real data
 set TELEMETRY_ENABLED=true            # Windows PowerShell
 # export TELEMETRY_ENABLED=true       # macOS / Linux
 python -m src.main                    # or any demo; turns appended to logs/events.jsonl
 
-# 6. Launch the dashboard
+# Launch the Streamlit metrics dashboard
 streamlit run dashboard/app.py
 ```
 
